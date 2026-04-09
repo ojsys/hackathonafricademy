@@ -78,6 +78,22 @@ switch ($settingType) {
         }
         break;
 
+    case 'email':
+        $fields = ['smtp_host','smtp_port','smtp_user','smtp_pass','smtp_from_email','smtp_from_name','smtp_encryption'];
+        foreach ($fields as $f) {
+            if (isset($_POST[$f])) set_setting($f, trim($_POST[$f]));
+        }
+        set_flash('success', 'Email settings saved.');
+        break;
+
+    case 'pipeline':
+        $deadline = trim($_POST['completion_deadline'] ?? '');
+        set_setting('completion_deadline', $deadline);
+        $limit = max(1, (int)($_POST['shortlist_limit'] ?? 100));
+        set_setting('shortlist_limit', (string)$limit);
+        set_flash('success', 'Pipeline settings saved.');
+        break;
+
     default:
         set_flash('error', 'Invalid setting type.');
         break;

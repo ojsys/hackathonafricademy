@@ -142,6 +142,81 @@ require_once __DIR__ . '/../includes/header.php';
             </form>
         </div>
 
+        <!-- Email / SMTP Settings -->
+        <div class="settings-section" data-testid="settings-email">
+            <h3><i class="bi bi-envelope me-2"></i>Email / SMTP (Hostinger)</h3>
+            <p class="small" style="color:var(--text-muted)">Create an email account in Hostinger hPanel first (e.g. <code>noreply@yourdomain.com</code>), then enter the credentials here.</p>
+            <form action="/actions/admin/update_settings.php" method="POST">
+                <?= csrf_field() ?>
+                <input type="hidden" name="setting_type" value="email">
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label">SMTP Host</label>
+                        <input type="text" name="smtp_host" class="form-control" value="<?= h($settings['smtp_host'] ?? 'smtp.hostinger.com') ?>" placeholder="smtp.hostinger.com">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Port</label>
+                        <input type="number" name="smtp_port" class="form-control" value="<?= h($settings['smtp_port'] ?? '465') ?>">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Encryption</label>
+                        <select name="smtp_encryption" class="form-select">
+                            <option value="ssl" <?= ($settings['smtp_encryption'] ?? 'ssl') === 'ssl' ? 'selected' : '' ?>>SSL (port 465)</option>
+                            <option value="tls" <?= ($settings['smtp_encryption'] ?? '') === 'tls' ? 'selected' : '' ?>>TLS (port 587)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label">SMTP Username (your email)</label>
+                        <input type="email" name="smtp_user" class="form-control" value="<?= h($settings['smtp_user'] ?? '') ?>" placeholder="noreply@yourdomain.com">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">SMTP Password</label>
+                        <input type="password" name="smtp_pass" class="form-control" value="<?= h($settings['smtp_pass'] ?? '') ?>" placeholder="Your email password">
+                    </div>
+                </div>
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label">From Email</label>
+                        <input type="email" name="smtp_from_email" class="form-control" value="<?= h($settings['smtp_from_email'] ?? '') ?>" placeholder="noreply@yourdomain.com">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">From Name</label>
+                        <input type="text" name="smtp_from_name" class="form-control" value="<?= h($settings['smtp_from_name'] ?? 'HackathonAfrica') ?>">
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary" data-testid="save-email">
+                    <i class="bi bi-check2 me-1"></i> Save Email Settings
+                </button>
+            </form>
+        </div>
+
+        <!-- Pipeline Settings -->
+        <div class="settings-section" data-testid="settings-pipeline">
+            <h3><i class="bi bi-funnel me-2"></i>Pipeline Settings</h3>
+            <form action="/actions/admin/update_settings.php" method="POST">
+                <?= csrf_field() ?>
+                <input type="hidden" name="setting_type" value="pipeline">
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Application Deadline</label>
+                        <input type="datetime-local" name="completion_deadline" class="form-control"
+                               value="<?= h($settings['completion_deadline'] ?? '') ?>">
+                        <div class="form-text">Leave blank for no deadline. Students are reminded 7 and 3 days before.</div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Shortlist Limit (top N candidates)</label>
+                        <input type="number" name="shortlist_limit" class="form-control" min="1" max="10000"
+                               value="<?= h($settings['shortlist_limit'] ?? '100') ?>">
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-check2 me-1"></i> Save Pipeline Settings
+                </button>
+            </form>
+        </div>
+
         <!-- Danger Zone -->
         <div class="settings-section" style="border-color: rgba(255, 68, 68, 0.3);">
             <h3 style="color: var(--danger);"><i class="bi bi-exclamation-triangle me-2"></i>Reset to Defaults</h3>

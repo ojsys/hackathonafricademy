@@ -102,9 +102,19 @@ $stmt->execute([
     json_encode($codeSubmissions)
 ]);
 
-// Update candidate review if passed
-if ($passed) {
-    create_or_update_candidate_review($user['id']);
+// Always update candidate review after an exam attempt
+create_or_update_candidate_review($user['id']);
+
+// If all 3 courses are now complete, send completion email
+if (is_eligible($user['id'])) {
+    try {
+        require_once __DIR__ . '/../includes/mailer.php';
+        $review = get_candidate_review($user['id']);
+        $composite = $review ? (float)($review['composite_score'] ?? 0) : 0;
+        email_all_courses_complete($user['email'], $user['name'], $composite);
+    } catch (Throwable $e) {
+        error_log('Completion email failed: ' . $e->getMessage());
+    }
 }
 
 // Redirect to results

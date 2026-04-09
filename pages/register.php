@@ -177,8 +177,19 @@ require_once __DIR__ . '/../includes/header.php';
                     </div>
                 </div>
 
+                <div class="mb-3">
+                    <label class="form-label" for="skill_level">Self-Assessed Skill Level <span class="text-danger">*</span></label>
+                    <select class="form-select" id="skill_level" name="skill_level" required>
+                        <option value="">Select…</option>
+                        <option value="beginner"     <?= ($_POST['skill_level'] ?? '') === 'beginner'     ? 'selected' : '' ?>>Beginner — little to no coding experience</option>
+                        <option value="intermediate" <?= ($_POST['skill_level'] ?? '') === 'intermediate' ? 'selected' : '' ?>>Intermediate — some HTML/CSS knowledge</option>
+                        <option value="advanced"     <?= ($_POST['skill_level'] ?? '') === 'advanced'     ? 'selected' : '' ?>>Advanced — comfortable with web development</option>
+                    </select>
+                    <div class="form-text">This is for analytics only and does not affect your selection.</div>
+                </div>
+
                 <div class="mb-4">
-                    <label class="form-label" for="bio">Brief Bio / Motivation <span class="text-danger">*</span></label>
+                    <label class="form-label" for="bio">Why do you want to join HackathonAfrica? <span class="text-danger">*</span></label>
                     <textarea class="form-control" id="bio" name="bio" rows="3"
                               placeholder="Tell us briefly about yourself and why you want to join HackathonAfrica…"
                               maxlength="500" required><?= h($_POST['bio'] ?? '') ?></textarea>

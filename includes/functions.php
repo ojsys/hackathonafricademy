@@ -251,6 +251,25 @@ function is_eligible(int $userId): bool {
     return true;
 }
 
+/**
+ * Returns true if the course is locked because a prerequisite course
+ * (lower order_index) has not yet been completed by this user.
+ */
+function is_course_locked(int $userId, int $courseId): bool {
+    $stmt = db()->prepare('SELECT order_index FROM courses WHERE id = ?');
+    $stmt->execute([$courseId]);
+    $course = $stmt->fetch();
+    if (!$course || $course['order_index'] <= 1) return false; // first course never locked
+
+    // Get all courses that come before this one
+    $prev = db()->prepare('SELECT id FROM courses WHERE order_index < ? AND status = "published" ORDER BY order_index');
+    $prev->execute([$course['order_index']]);
+    foreach ($prev->fetchAll() as $p) {
+        if (!is_course_complete($userId, (int)$p['id'])) return true;
+    }
+    return false;
+}
+
 function get_next_lesson(int $userId, int $courseId): ?array {
     $modules = get_modules_for_course($courseId);
     foreach ($modules as $m) {
@@ -323,22 +342,23 @@ function get_candidate_review(int $userId): ?array {
 }
 
 function create_or_update_candidate_review(int $userId): void {
-    $review = get_candidate_review($userId);
-    
-    // Calculate stats
+    $review  = get_candidate_review($userId);
     $courses = get_all_published_courses();
+
     $coursesCompleted = 0;
-    $totalQuizScore = 0;
-    $quizCount = 0;
-    $totalExamScore = 0;
-    $examCount = 0;
-    
+    $totalQuizScore   = 0;
+    $quizCount        = 0;
+    $totalExamScore   = 0;
+    $examCount        = 0;
+    $totalAttempts    = 0; // extra exam attempts beyond first
+    $totalTimeTaken   = 0; // seconds across all exams
+
     foreach ($courses as $course) {
         if (is_course_complete($userId, $course['id'])) {
             $coursesCompleted++;
         }
-        
-        // Get quiz scores for this course
+
+        // Best quiz score per module (30% weight)
         $modules = get_modules_for_course($course['id']);
         foreach ($modules as $module) {
             $quiz = get_quiz_for_module($module['id']);
@@ -350,37 +370,77 @@ function create_or_update_candidate_review(int $userId): void {
                 }
             }
         }
-        
-        // Get exam score
+
+        // Best exam score (70% weight) + attempt count + speed
         $exam = get_final_exam_for_course($course['id']);
         if ($exam) {
-            $attempt = get_best_exam_attempt($userId, $exam['id']);
-            if ($attempt) {
-                $totalExamScore += $attempt['score'];
+            $best = get_best_exam_attempt($userId, $exam['id']);
+            if ($best) {
+                $totalExamScore += $best['score'];
                 $examCount++;
+                $totalTimeTaken += (int)($best['time_taken'] ?? 0);
             }
+            // Count all attempts for this exam (penalty for extra tries)
+            $allAttempts = db()->prepare('SELECT COUNT(*) FROM final_exam_attempts WHERE user_id = ? AND exam_id = ?');
+            $allAttempts->execute([$userId, $exam['id']]);
+            $n = (int)$allAttempts->fetchColumn();
+            if ($n > 1) $totalAttempts += ($n - 1); // only penalise attempts beyond the first
         }
     }
-    
+
     $avgQuizScore = $quizCount > 0 ? round($totalQuizScore / $quizCount, 2) : 0;
-    $avgExamScore = $examCount > 0 ? round($totalExamScore / $examCount, 2) : 0;
-    $totalScore = ($avgQuizScore * 0.4) + ($avgExamScore * 0.6); // Weighted average
-    
-    // Determine eligibility status
-    $eligible = is_eligible($userId);
+    $avgExamScore = $examCount  > 0 ? round($totalExamScore / $examCount,  2) : 0;
+
+    // Weighted base: Quizzes 30%, Exams 70%
+    $baseScore = ($avgQuizScore * 0.30) + ($avgExamScore * 0.70);
+
+    // Speed bonus: up to +5 points.
+    // Benchmark: 3 exams × 45 min = 8100 s. Finishing in ≤ half that = +5 pts.
+    $speedBonus = 0;
+    if ($examCount > 0 && $totalTimeTaken > 0) {
+        $benchmark  = $examCount * 2700; // 45 min per exam in seconds
+        $ratio      = $totalTimeTaken / $benchmark;
+        $speedBonus = round(max(0, (1 - $ratio) * 5), 2); // 0–5 pts
+    }
+
+    // Attempt penalty: -2 points per extra attempt, max -10
+    $attemptPenalty = round(min($totalAttempts * 2, 10), 2);
+
+    $compositeScore = round(max(0, min(100, $baseScore + $speedBonus - $attemptPenalty)), 2);
+
+    // Eligibility: must pass every course AND hit the 75% composite threshold
+    $meetsThreshold = $compositeScore >= 75 && is_eligible($userId);
     $status = 'pending';
-    if ($eligible && $totalScore >= 70) {
+    if ($meetsThreshold) {
         $status = 'eligible';
     } elseif ($coursesCompleted > 0) {
         $status = 'needs_review';
     }
-    
+
     if ($review) {
-        $stmt = db()->prepare('UPDATE candidate_reviews SET courses_completed = ?, total_score = ?, avg_quiz_score = ?, avg_exam_score = ?, eligibility_status = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?');
-        $stmt->execute([$coursesCompleted, $totalScore, $avgQuizScore, $avgExamScore, $status, $userId]);
+        $stmt = db()->prepare('
+            UPDATE candidate_reviews
+            SET courses_completed = ?, total_score = ?, avg_quiz_score = ?,
+                avg_exam_score = ?, composite_score = ?, speed_bonus = ?,
+                attempt_penalty = ?, eligibility_status = ?, updated_at = CURRENT_TIMESTAMP
+            WHERE user_id = ?
+        ');
+        $stmt->execute([
+            $coursesCompleted, $baseScore, $avgQuizScore,
+            $avgExamScore, $compositeScore, $speedBonus,
+            $attemptPenalty, $status, $userId,
+        ]);
     } else {
-        $stmt = db()->prepare('INSERT INTO candidate_reviews (user_id, courses_completed, total_score, avg_quiz_score, avg_exam_score, eligibility_status) VALUES (?, ?, ?, ?, ?, ?)');
-        $stmt->execute([$userId, $coursesCompleted, $totalScore, $avgQuizScore, $avgExamScore, $status]);
+        $stmt = db()->prepare('
+            INSERT INTO candidate_reviews
+                (user_id, courses_completed, total_score, avg_quiz_score, avg_exam_score,
+                 composite_score, speed_bonus, attempt_penalty, eligibility_status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ');
+        $stmt->execute([
+            $userId, $coursesCompleted, $baseScore, $avgQuizScore, $avgExamScore,
+            $compositeScore, $speedBonus, $attemptPenalty, $status,
+        ]);
     }
 }
 

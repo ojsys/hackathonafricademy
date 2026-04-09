@@ -52,12 +52,59 @@ require_once __DIR__ . '/../includes/header.php';
         <div class="d-flex align-items-center justify-content-between mb-4">
             <div>
                 <h1 class="admin-page-title mb-1">Candidate Review</h1>
-                <p class="text-muted mb-0">Review and manage HackathonAfrica program applicants</p>
+                <p class="text-muted mb-0">Review and manage HackathonAfrica 3.0 applicants</p>
             </div>
-            <div class="d-flex gap-2 align-items-center">
-                <a href="/actions/admin/export_candidates.php?status=<?= h($statusFilter) ?>" class="btn btn-outline-secondary btn-sm" data-testid="export-csv">
+            <div class="d-flex gap-2 align-items-center flex-wrap">
+                <a href="/actions/admin/export_candidates.php?status=<?= h($statusFilter) ?>" class="btn btn-outline-secondary btn-sm">
                     <i class="bi bi-download me-1"></i> Export CSV
                 </a>
+                <!-- Pipeline Actions -->
+                <div class="dropdown">
+                    <button class="btn btn-outline-primary btn-sm dropdown-toggle" data-bs-toggle="dropdown">
+                        <i class="bi bi-funnel me-1"></i> Pipeline
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><h6 class="dropdown-header">Ranking</h6></li>
+                        <li>
+                            <form action="/actions/admin/shortlist_candidates.php" method="POST" class="px-3 pb-2">
+                                <?= csrf_field() ?>
+                                <input type="hidden" name="action" value="run_ranking">
+                                <button class="btn btn-sm btn-outline-secondary w-100" onclick="return confirm('Recalculate composite scores for all candidates?')">
+                                    <i class="bi bi-calculator me-1"></i> Recalculate Scores
+                                </button>
+                            </form>
+                        </li>
+                        <li>
+                            <form action="/actions/admin/shortlist_candidates.php" method="POST" class="px-3 pb-2">
+                                <?= csrf_field() ?>
+                                <input type="hidden" name="action" value="shortlist">
+                                <button class="btn btn-sm btn-primary w-100" onclick="return confirm('This will replace the current shortlist with the top <?= get_setting('shortlist_limit','100') ?> eligible candidates by composite score. Continue?')">
+                                    <i class="bi bi-list-stars me-1"></i> Run Shortlisting
+                                </button>
+                            </form>
+                        </li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><h6 class="dropdown-header">Emails</h6></li>
+                        <li>
+                            <form action="/actions/admin/shortlist_candidates.php" method="POST" class="px-3 pb-2">
+                                <?= csrf_field() ?>
+                                <input type="hidden" name="action" value="invite">
+                                <button class="btn btn-sm btn-success w-100" onclick="return confirm('Send bootcamp invitation emails to all shortlisted candidates who have not yet been invited?')">
+                                    <i class="bi bi-envelope-check me-1"></i> Send Invitations
+                                </button>
+                            </form>
+                        </li>
+                        <li>
+                            <form action="/actions/admin/shortlist_candidates.php" method="POST" class="px-3 pb-2">
+                                <?= csrf_field() ?>
+                                <input type="hidden" name="action" value="notify_not_selected">
+                                <button class="btn btn-sm btn-outline-secondary w-100" onclick="return confirm('Send appreciation emails to all non-shortlisted candidates who completed the courses?')">
+                                    <i class="bi bi-envelope me-1"></i> Notify Not Selected
+                                </button>
+                            </form>
+                        </li>
+                    </ul>
+                </div>
                 <span class="eligibility-status eligible">
                     <i class="bi bi-trophy-fill"></i>
                     <?= $stats['eligible'] ?> Eligible
