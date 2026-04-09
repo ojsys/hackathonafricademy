@@ -1,0 +1,38 @@
+# ── Database (never commit live data) ─────────────────────────
+database/lms.sqlite
+database/lms.sqlite-shm
+database/lms.sqlite-wal
+
+# ── User uploads (generated content, not source code) ─────────
+public/img/uploads/*
+!public/img/uploads/.gitkeep
+
+# ── Environment / secrets ──────────────────────────────────────
+.env
+*.env
+backend/.env
+config/local.php
+
+# ── Node / frontend build artifacts ───────────────────────────
+node_modules/
+frontend/node_modules/
+frontend/build/
+yarn-error.log
+
+# ── Python ────────────────────────────────────────────────────
+__pycache__/
+backend/__pycache__/
+*.pyc
+*.pyo
+
+# ── OS / editor junk ──────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ── PHP error logs ─────────────────────────────────────────────
+*.log
+error_log
