@@ -1,0 +1,78 @@
+{
+  "theme": "dark",
+  "archetype": "Archetype 2: The Performance Pro (Adapted for African Coding Bootcamp)",
+  "vibe": "Elite, focused, technical, minimal, tactical, high-energy",
+  "colors": {
+    "background": "#0A0A0A",
+    "surface": "#121212",
+    "surface_hover": "#1E1E1E",
+    "border": "#27272A",
+    "primary": "#00FF66",
+    "primary_hover": "#00CC52",
+    "text_primary": "#FFFFFF",
+    "text_secondary": "#A1A1AA",
+    "text_on_primary": "#0A0A0A",
+    "danger": "#FF3B30",
+    "warning": "#FFCC00"
+  },
+  "typography": {
+    "heading_font": "Outfit",
+    "body_font": "IBM Plex Sans",
+    "mono_font": "JetBrains Mono",
+    "hierarchy": {
+      "h1": "text-4xl sm:text-5xl tracking-tighter font-black",
+      "h2": "text-2xl sm:text-3xl tracking-tight font-bold",
+      "h3": "text-xl sm:text-2xl font-semibold",
+      "body": "text-base leading-relaxed",
+      "mono": "text-sm font-mono tracking-tight",
+      "overline": "text-xs uppercase tracking-[0.2em] font-bold"
+    }
+  },
+  "spacing_and_layout": {
+    "container_padding": "p-6 md:p-8",
+    "section_gap": "gap-12 md:gap-24",
+    "border_radius": "rounded-none",
+    "grid_system": "The Control Room Grid: grid-cols-1 md:grid-cols-3 lg:grid-cols-4 with gap-4 or gap-6 for tight dense layouts."
+  },
+  "components": {
+    "cards": "Flat background, 1px solid border-zinc-800, 0px border-radius, no shadow. Technical grid look.",
+    "buttons": "Sharp edges, high contrast. Primary: bg-[#00FF66] text-black font-bold hover:bg-[#00CC52]. Secondary: border border-zinc-700 hover:bg-zinc-800 text-white.",
+    "inputs": "Shadcn based, rounded-none, border-zinc-700 bg-[#121212] focus:ring-1 focus:ring-[#00FF66] text-white.",
+    "navigation": "Solid background bg-[#0A0A0A] with hard bottom border border-zinc-800. Visible links on desktop, primary CTA on right.",
+    "code_editor": "Monaco or custom styled textarea with JetBrains Mono, syntax highlighting using #00FF66, #FFCC00, #FF3B30 on #121212 background.",
+    "charts": "Shadcn charts/recharts using green/yellow accents. Tooltips must be dark with sharp borders."
+  },
+  "motion_and_interaction": {
+    "hover_states": "Always change background or border color. Use transition-colors duration-200. Text must remain legible.",
+    "focus_states": "focus:outline-none focus:ring-2 focus:ring-[#00FF66] focus:ring-offset-2 focus:ring-offset-[#0A0A0A]",
+    "loading": "ASCII or mono-spaced terminal loaders. E.g., '[====>    ] Loading...'"
+  },
+  "accessibility": {
+    "contrast": "Ensure minimum 4.5:1 ratio for normal text. Text over images MUST have gradient overlay.",
+    "testing": "All interactive elements MUST have data-testid (e.g., data-testid='enroll-button')"
+  },
+  "iconography": {
+    "library": "lucide-react",
+    "style": "Minimal, 1.5 stroke width, no fill."
+  },
+  "media": {
+    "hero_bg": "https://images.unsplash.com/photo-1515879218367-8466d910aaa4?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2OTV8MHwxfHNlYXJjaHwxfHxjb2RlJTIwc2NyZWVufGVufDB8fHx8MTc3NTc1MzMwMnww&ixlib=rb-4.1.0&q=85",
+    "student_coding": "https://images.unsplash.com/photo-1710770563074-6d9cc0d3e338?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NjZ8MHwxfHNlYXJjaHwxfHxhZnJpY2FuJTIwcHJvZ3JhbW1lcnxlbnwwfHx8fDE3NzU3NTMzMDJ8MA&ixlib=rb-4.1.0&q=85",
+    "student_studying": "https://images.unsplash.com/photo-1707072787345-351c71abd2d2?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NjZ8MHwxfHNlYXJjaHwyfHxhZnJpY2FuJTIwcHJvZ3JhbW1lcnxlbnwwfHx8fDE3NzU3NTMzMDJ8MA&ixlib=rb-4.1.0&q=85",
+    "code_close_up": "https://images.pexels.com/photos/4164418/pexels-photo-4164418.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+    "logo_placeholder": "https://images.unsplash.com/photo-1633419461186-7d40a38105ec?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1NzB8MHwxfHNlYXJjaHwxfHxtaW5pbWFsJTIwZ2VvbWV0cmljJTIwbG9nb3xlbnwwfHx8fDE3NzU3NTMyOTl8MA&ixlib=rb-4.1.0&q=85"
+  },
+  "instructions_to_main_agent": [
+    "Import Outfit, IBM Plex Sans, and JetBrains Mono from Google Fonts in index.css.",
+    "Use pure HTML/Tailwind for structural layout and Shadcn for complex interactives (dropdowns, dialogs).",
+    "Do NOT use Inter. Use Outfit for headings and IBM Plex Sans for body text.",
+    "Implement 'The Control Room Grid' for the Admin Analytics Dashboard.",
+    "Use stark, 0px border radius (rounded-none) for all cards and inputs to fit the 'bootcamp/terminal' look.",
+    "Accent color is #00FF66 (Volt Green) to give an energetic, pan-African tech vibe.",
+    "Ensure the primary CTA buttons use text-[#0A0A0A] on bg-[#00FF66] for contrast.",
+    "Include data-testid on all interactive elements.",
+    "Avoid glassmorphism. Use solid dark colors (#0A0A0A and #121212) with 1px #27272A borders.",
+    "Use JetBrains Mono or similar monospaced font for all code blocks, code exercises, and technical data.",
+    "For the lesson viewer with code examples and the code exercise environment, present it with an IDE-like split pane."
+  ]
+}

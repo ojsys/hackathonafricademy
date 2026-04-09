@@ -1,0 +1,559 @@
+<?php
+require_once __DIR__ . '/../config/database.php';
+
+// ─── Session ──────────────────────────────────────────────
+function start_session(): void {
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
+}
+
+// ─── CSRF ─────────────────────────────────────────────────
+function csrf_token(): string {
+    start_session();
+    if (empty($_SESSION['csrf_token'])) {
+        $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+    }
+    return $_SESSION['csrf_token'];
+}
+
+function csrf_field(): string {
+    return '<input type="hidden" name="csrf_token" value="' . h(csrf_token()) . '">';
+}
+
+function verify_csrf(): void {
+    start_session();
+    $token = $_POST['csrf_token'] ?? '';
+    if (!hash_equals($_SESSION['csrf_token'] ?? '', $token)) {
+        http_response_code(403);
+        die('Invalid security token. Please go back and try again.');
+    }
+}
+
+// ─── Output escaping ──────────────────────────────────────
+function h(string $str): string {
+    return htmlspecialchars($str, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+}
+
+// ─── Auth helpers ─────────────────────────────────────────
+function is_logged_in(): bool {
+    start_session();
+    return !empty($_SESSION['user_id']);
+}
+
+function current_user(): ?array {
+    if (!is_logged_in()) return null;
+    static $user = null;
+    if ($user === null) {
+        $stmt = db()->prepare('SELECT * FROM users WHERE id = ?');
+        $stmt->execute([$_SESSION['user_id']]);
+        $user = $stmt->fetch() ?: null;
+    }
+    return $user;
+}
+
+function require_login(): void {
+    if (!is_logged_in()) {
+        header('Location: /pages/login.php?redirect=' . urlencode($_SERVER['REQUEST_URI']));
+        exit;
+    }
+}
+
+function require_admin(): void {
+    require_login();
+    $user = current_user();
+    if (!in_array($user['role'], ['admin', 'superadmin'])) {
+        header('Location: /pages/dashboard.php');
+        exit;
+    }
+}
+
+// ─── Flash messages ───────────────────────────────────────
+function set_flash(string $type, string $message): void {
+    start_session();
+    $_SESSION['flash'] = ['type' => $type, 'message' => $message];
+}
+
+function get_flash(): ?array {
+    start_session();
+    $flash = $_SESSION['flash'] ?? null;
+    unset($_SESSION['flash']);
+    return $flash;
+}
+
+function render_flash(): void {
+    $flash = get_flash();
+    if (!$flash) return;
+    $type = $flash['type'] === 'error' ? 'danger' : h($flash['type']);
+    echo '<div class="alert alert-' . $type . ' alert-dismissible fade show" role="alert">';
+    echo h($flash['message']);
+    echo '<button type="button" class="btn-close" data-bs-dismiss="alert"></button>';
+    echo '</div>';
+}
+
+// ─── Course / Progress helpers ────────────────────────────
+function get_all_published_courses(): array {
+    $stmt = db()->query('SELECT * FROM courses WHERE status = "published" ORDER BY order_index');
+    return $stmt->fetchAll();
+}
+
+function get_course(int $id): ?array {
+    $stmt = db()->prepare('SELECT * FROM courses WHERE id = ?');
+    $stmt->execute([$id]);
+    return $stmt->fetch() ?: null;
+}
+
+function get_modules_for_course(int $courseId): array {
+    $stmt = db()->prepare('SELECT * FROM modules WHERE course_id = ? ORDER BY order_index');
+    $stmt->execute([$courseId]);
+    return $stmt->fetchAll();
+}
+
+function get_lessons_for_module(int $moduleId): array {
+    $stmt = db()->prepare('SELECT * FROM lessons WHERE module_id = ? ORDER BY order_index');
+    $stmt->execute([$moduleId]);
+    return $stmt->fetchAll();
+}
+
+function get_lesson(int $id): ?array {
+    $stmt = db()->prepare('SELECT l.*, m.course_id, m.title AS module_title FROM lessons l JOIN modules m ON l.module_id = m.id WHERE l.id = ?');
+    $stmt->execute([$id]);
+    return $stmt->fetch() ?: null;
+}
+
+function get_quiz_for_module(int $moduleId): ?array {
+    $stmt = db()->prepare('SELECT * FROM quizzes WHERE module_id = ?');
+    $stmt->execute([$moduleId]);
+    return $stmt->fetch() ?: null;
+}
+
+function get_quiz(int $id): ?array {
+    $stmt = db()->prepare('SELECT * FROM quizzes WHERE id = ?');
+    $stmt->execute([$id]);
+    return $stmt->fetch() ?: null;
+}
+
+function get_questions_for_quiz(int $quizId): array {
+    $stmt = db()->prepare('SELECT * FROM quiz_questions WHERE quiz_id = ? ORDER BY order_index');
+    $stmt->execute([$quizId]);
+    $questions = $stmt->fetchAll();
+
+    foreach ($questions as &$q) {
+        $optStmt = db()->prepare('SELECT * FROM quiz_options WHERE question_id = ? ORDER BY id');
+        $optStmt->execute([$q['id']]);
+        $q['options'] = array_map(function ($opt) {
+            return [
+                'id'         => $opt['id'],
+                'text'       => $opt['option_text'],
+                'is_correct' => (bool) $opt['is_correct'],
+            ];
+        }, $optStmt->fetchAll());
+    }
+
+    return $questions;
+}
+
+function is_module_accessible(int $userId, int $moduleId): bool {
+    // Get this module's course and order
+    $stmt = db()->prepare('SELECT course_id, order_index FROM modules WHERE id = ?');
+    $stmt->execute([$moduleId]);
+    $mod = $stmt->fetch();
+    if (!$mod) return false;
+
+    // Get all previous modules in the same course (lower order_index)
+    $stmt = db()->prepare('SELECT id FROM modules WHERE course_id = ? AND order_index < ? ORDER BY order_index');
+    $stmt->execute([$mod['course_id'], $mod['order_index']]);
+    $prevModules = $stmt->fetchAll();
+
+    // Every previous module that has a quiz must have it passed
+    foreach ($prevModules as $prev) {
+        $quiz = get_quiz_for_module($prev['id']);
+        if ($quiz) {
+            $attempt = get_best_quiz_attempt($userId, $quiz['id']);
+            if (!$attempt || !$attempt['passed']) return false;
+        }
+    }
+    return true;
+}
+
+function is_lesson_completed(int $userId, int $lessonId): bool {
+    $stmt = db()->prepare('SELECT 1 FROM user_lesson_progress WHERE user_id = ? AND lesson_id = ?');
+    $stmt->execute([$userId, $lessonId]);
+    return (bool)$stmt->fetch();
+}
+
+function get_best_quiz_attempt(int $userId, int $quizId): ?array {
+    $stmt = db()->prepare('SELECT * FROM quiz_attempts WHERE user_id = ? AND quiz_id = ? ORDER BY score DESC LIMIT 1');
+    $stmt->execute([$userId, $quizId]);
+    return $stmt->fetch() ?: null;
+}
+
+function is_enrolled(int $userId, int $courseId): bool {
+    $stmt = db()->prepare('SELECT 1 FROM user_enrollments WHERE user_id = ? AND course_id = ?');
+    $stmt->execute([$userId, $courseId]);
+    return (bool)$stmt->fetch();
+}
+
+function enroll_user(int $userId, int $courseId): void {
+    $ignore = DB_DRIVER === 'sqlite' ? 'OR IGNORE' : 'IGNORE';
+    $stmt = db()->prepare("INSERT $ignore INTO user_enrollments (user_id, course_id) VALUES (?, ?)");
+    $stmt->execute([$userId, $courseId]);
+}
+
+function get_course_progress(int $userId, int $courseId): array {
+    // Total lessons in course
+    $stmt = db()->prepare('SELECT COUNT(l.id) AS total FROM lessons l JOIN modules m ON l.module_id = m.id WHERE m.course_id = ?');
+    $stmt->execute([$courseId]);
+    $total = (int)$stmt->fetchColumn();
+
+    // Completed lessons
+    $stmt = db()->prepare('SELECT COUNT(ulp.id) AS done FROM user_lesson_progress ulp JOIN lessons l ON ulp.lesson_id = l.id JOIN modules m ON l.module_id = m.id WHERE m.course_id = ? AND ulp.user_id = ?');
+    $stmt->execute([$courseId, $userId]);
+    $done = (int)$stmt->fetchColumn();
+
+    $pct = $total > 0 ? round(($done / $total) * 100) : 0;
+    return ['total' => $total, 'done' => $done, 'percent' => $pct];
+}
+
+function get_module_completion(int $userId, int $moduleId): array {
+    $lessons = get_lessons_for_module($moduleId);
+    $total = count($lessons);
+    $done = 0;
+    foreach ($lessons as $l) {
+        if (is_lesson_completed($userId, $l['id'])) $done++;
+    }
+    $quiz = get_quiz_for_module($moduleId);
+    $quizPassed = false;
+    if ($quiz) {
+        $attempt = get_best_quiz_attempt($userId, $quiz['id']);
+        $quizPassed = $attempt && $attempt['passed'];
+    }
+    $complete = ($total > 0 && $done === $total) && (!$quiz || $quizPassed);
+    return ['lessons_total' => $total, 'lessons_done' => $done, 'quiz_passed' => $quizPassed, 'complete' => $complete];
+}
+
+function is_course_complete(int $userId, int $courseId): bool {
+    $modules = get_modules_for_course($courseId);
+    if (empty($modules)) return false;
+    foreach ($modules as $m) {
+        $mc = get_module_completion($userId, $m['id']);
+        if (!$mc['complete']) return false;
+    }
+    return true;
+}
+
+function is_eligible(int $userId): bool {
+    $courses = get_all_published_courses();
+    if (empty($courses)) return false;
+    foreach ($courses as $c) {
+        if (!is_course_complete($userId, $c['id'])) return false;
+    }
+    return true;
+}
+
+function get_next_lesson(int $userId, int $courseId): ?array {
+    $modules = get_modules_for_course($courseId);
+    foreach ($modules as $m) {
+        $lessons = get_lessons_for_module($m['id']);
+        foreach ($lessons as $l) {
+            if (!is_lesson_completed($userId, $l['id'])) {
+                return $l;
+            }
+        }
+    }
+    return null;
+}
+
+// ─── Code Exercise helpers ────────────────────────────────
+function get_exercises_for_lesson(int $lessonId): array {
+    $stmt = db()->prepare('SELECT * FROM coding_exercises WHERE lesson_id = ? ORDER BY order_index');
+    $stmt->execute([$lessonId]);
+    return $stmt->fetchAll();
+}
+
+function get_exercise(int $id): ?array {
+    $stmt = db()->prepare('SELECT * FROM coding_exercises WHERE id = ?');
+    $stmt->execute([$id]);
+    return $stmt->fetch() ?: null;
+}
+
+function get_user_exercise_submission(int $userId, int $exerciseId): ?array {
+    $stmt = db()->prepare('SELECT * FROM code_submissions WHERE user_id = ? AND exercise_id = ? ORDER BY submitted_at DESC LIMIT 1');
+    $stmt->execute([$userId, $exerciseId]);
+    return $stmt->fetch() ?: null;
+}
+
+function has_completed_exercise(int $userId, int $exerciseId): bool {
+    $stmt = db()->prepare('SELECT 1 FROM code_submissions WHERE user_id = ? AND exercise_id = ? AND is_correct = 1');
+    $stmt->execute([$userId, $exerciseId]);
+    return (bool)$stmt->fetch();
+}
+
+// ─── Final Exam helpers ───────────────────────────────────
+function get_final_exam_for_course(int $courseId): ?array {
+    $stmt = db()->prepare('SELECT * FROM final_exams WHERE course_id = ? AND is_active = 1');
+    $stmt->execute([$courseId]);
+    return $stmt->fetch() ?: null;
+}
+
+function get_final_exam_questions(int $examId): array {
+    $stmt = db()->prepare('SELECT * FROM final_exam_questions WHERE exam_id = ? ORDER BY order_index');
+    $stmt->execute([$examId]);
+    return $stmt->fetchAll();
+}
+
+function get_best_exam_attempt(int $userId, int $examId): ?array {
+    $stmt = db()->prepare('SELECT * FROM final_exam_attempts WHERE user_id = ? AND exam_id = ? AND completed_at IS NOT NULL ORDER BY score DESC LIMIT 1');
+    $stmt->execute([$userId, $examId]);
+    return $stmt->fetch() ?: null;
+}
+
+function has_passed_final_exam(int $userId, int $courseId): bool {
+    $exam = get_final_exam_for_course($courseId);
+    if (!$exam) return true; // No exam required
+    $attempt = get_best_exam_attempt($userId, $exam['id']);
+    return $attempt && $attempt['passed'];
+}
+
+// ─── Candidate Review helpers ─────────────────────────────
+function get_candidate_review(int $userId): ?array {
+    $stmt = db()->prepare('SELECT * FROM candidate_reviews WHERE user_id = ?');
+    $stmt->execute([$userId]);
+    return $stmt->fetch() ?: null;
+}
+
+function create_or_update_candidate_review(int $userId): void {
+    $review = get_candidate_review($userId);
+    
+    // Calculate stats
+    $courses = get_all_published_courses();
+    $coursesCompleted = 0;
+    $totalQuizScore = 0;
+    $quizCount = 0;
+    $totalExamScore = 0;
+    $examCount = 0;
+    
+    foreach ($courses as $course) {
+        if (is_course_complete($userId, $course['id'])) {
+            $coursesCompleted++;
+        }
+        
+        // Get quiz scores for this course
+        $modules = get_modules_for_course($course['id']);
+        foreach ($modules as $module) {
+            $quiz = get_quiz_for_module($module['id']);
+            if ($quiz) {
+                $attempt = get_best_quiz_attempt($userId, $quiz['id']);
+                if ($attempt) {
+                    $totalQuizScore += $attempt['score'];
+                    $quizCount++;
+                }
+            }
+        }
+        
+        // Get exam score
+        $exam = get_final_exam_for_course($course['id']);
+        if ($exam) {
+            $attempt = get_best_exam_attempt($userId, $exam['id']);
+            if ($attempt) {
+                $totalExamScore += $attempt['score'];
+                $examCount++;
+            }
+        }
+    }
+    
+    $avgQuizScore = $quizCount > 0 ? round($totalQuizScore / $quizCount, 2) : 0;
+    $avgExamScore = $examCount > 0 ? round($totalExamScore / $examCount, 2) : 0;
+    $totalScore = ($avgQuizScore * 0.4) + ($avgExamScore * 0.6); // Weighted average
+    
+    // Determine eligibility status
+    $eligible = is_eligible($userId);
+    $status = 'pending';
+    if ($eligible && $totalScore >= 70) {
+        $status = 'eligible';
+    } elseif ($coursesCompleted > 0) {
+        $status = 'needs_review';
+    }
+    
+    if ($review) {
+        $stmt = db()->prepare('UPDATE candidate_reviews SET courses_completed = ?, total_score = ?, avg_quiz_score = ?, avg_exam_score = ?, eligibility_status = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?');
+        $stmt->execute([$coursesCompleted, $totalScore, $avgQuizScore, $avgExamScore, $status, $userId]);
+    } else {
+        $stmt = db()->prepare('INSERT INTO candidate_reviews (user_id, courses_completed, total_score, avg_quiz_score, avg_exam_score, eligibility_status) VALUES (?, ?, ?, ?, ?, ?)');
+        $stmt->execute([$userId, $coursesCompleted, $totalScore, $avgQuizScore, $avgExamScore, $status]);
+    }
+}
+
+// ─── Admin stats ──────────────────────────────────────────
+function count_users(): int {
+    return (int)db()->query('SELECT COUNT(*) FROM users WHERE role = "student"')->fetchColumn();
+}
+
+function count_enrollments(): int {
+    return (int)db()->query('SELECT COUNT(*) FROM user_enrollments')->fetchColumn();
+}
+
+function count_quiz_attempts(): int {
+    return (int)db()->query('SELECT COUNT(*) FROM quiz_attempts')->fetchColumn();
+}
+
+function get_course_stats(): array {
+    $stmt = db()->query('SELECT c.title, COUNT(DISTINCT ue.user_id) AS enrolled FROM courses c LEFT JOIN user_enrollments ue ON ue.course_id = c.id WHERE c.status = "published" GROUP BY c.id ORDER BY c.order_index');
+    return $stmt->fetchAll();
+}
+
+// ─── Analytics helpers ────────────────────────────────────
+function get_analytics_overview(): array {
+    $totalStudents = count_users();
+    $totalEnrollments = count_enrollments();
+    $totalAttempts = count_quiz_attempts();
+    
+    // Average completion rate
+    $avgCompletion = db()->query('
+        SELECT AVG(completion_rate) as avg FROM (
+            SELECT ue.user_id, 
+                   CAST(COUNT(DISTINCT ulp.lesson_id) AS FLOAT) / NULLIF(COUNT(DISTINCT l.id), 0) * 100 as completion_rate
+            FROM user_enrollments ue
+            JOIN modules m ON m.course_id = ue.course_id
+            JOIN lessons l ON l.module_id = m.id
+            LEFT JOIN user_lesson_progress ulp ON ulp.lesson_id = l.id AND ulp.user_id = ue.user_id
+            GROUP BY ue.user_id, ue.course_id
+        )
+    ')->fetchColumn() ?: 0;
+    
+    // Average quiz score
+    $avgQuizScore = db()->query('SELECT AVG(score) FROM quiz_attempts')->fetchColumn() ?: 0;
+    
+    // Pass rate
+    $passRate = db()->query('SELECT ROUND(AVG(passed) * 100) FROM quiz_attempts')->fetchColumn() ?: 0;
+    
+    // Eligible candidates count
+    $eligibleCount = db()->query('SELECT COUNT(*) FROM candidate_reviews WHERE eligibility_status = "eligible"')->fetchColumn() ?: 0;
+    
+    return [
+        'total_students' => $totalStudents,
+        'total_enrollments' => $totalEnrollments,
+        'total_quiz_attempts' => $totalAttempts,
+        'avg_completion_rate' => round($avgCompletion, 1),
+        'avg_quiz_score' => round($avgQuizScore, 1),
+        'pass_rate' => $passRate,
+        'eligible_candidates' => $eligibleCount
+    ];
+}
+
+function get_course_analytics(): array {
+    $courses = get_all_published_courses();
+    $analytics = [];
+    
+    foreach ($courses as $course) {
+        // Enrollment count
+        $enrolled = db()->prepare('SELECT COUNT(*) FROM user_enrollments WHERE course_id = ?');
+        $enrolled->execute([$course['id']]);
+        $enrolledCount = $enrolled->fetchColumn();
+        
+        // Completion count
+        $completed = 0;
+        $enrolledUsers = db()->prepare('SELECT user_id FROM user_enrollments WHERE course_id = ?');
+        $enrolledUsers->execute([$course['id']]);
+        while ($row = $enrolledUsers->fetch()) {
+            if (is_course_complete($row['user_id'], $course['id'])) {
+                $completed++;
+            }
+        }
+        
+        // Average quiz score for this course
+        $avgScore = db()->prepare('
+            SELECT AVG(qa.score) 
+            FROM quiz_attempts qa 
+            JOIN quizzes q ON qa.quiz_id = q.id 
+            JOIN modules m ON q.module_id = m.id 
+            WHERE m.course_id = ?
+        ');
+        $avgScore->execute([$course['id']]);
+        
+        $analytics[] = [
+            'course' => $course,
+            'enrolled' => $enrolledCount,
+            'completed' => $completed,
+            'completion_rate' => $enrolledCount > 0 ? round(($completed / $enrolledCount) * 100, 1) : 0,
+            'avg_score' => round($avgScore->fetchColumn() ?: 0, 1)
+        ];
+    }
+    
+    return $analytics;
+}
+
+function get_candidates_for_review(string $status = 'all'): array {
+    $sql = '
+        SELECT u.*, cr.*,
+               (SELECT COUNT(*) FROM user_enrollments WHERE user_id = u.id) as enrollment_count,
+               (SELECT COUNT(*) FROM user_lesson_progress WHERE user_id = u.id) as lessons_completed
+        FROM users u
+        LEFT JOIN candidate_reviews cr ON cr.user_id = u.id
+        WHERE u.role = "student"
+    ';
+    
+    if ($status !== 'all') {
+        $sql .= ' AND cr.eligibility_status = ?';
+    }
+    
+    $sql .= ' ORDER BY cr.total_score DESC, u.created_at DESC';
+    
+    $stmt = db()->prepare($sql);
+    
+    if ($status !== 'all') {
+        $stmt->execute([$status]);
+    } else {
+        $stmt->execute();
+    }
+    
+    return $stmt->fetchAll();
+}
+
+// ─── Activity logging ─────────────────────────────────────
+function log_activity(int $userId, string $type, ?string $entityType = null, ?int $entityId = null, ?string $details = null): void {
+    $stmt = db()->prepare('INSERT INTO activity_log (user_id, activity_type, entity_type, entity_id, details) VALUES (?, ?, ?, ?, ?)');
+    $stmt->execute([$userId, $type, $entityType, $entityId, $details]);
+}
+
+function update_user_activity(int $userId): void {
+    $stmt = db()->prepare('UPDATE users SET last_activity = CURRENT_TIMESTAMP WHERE id = ?');
+    $stmt->execute([$userId]);
+}
+
+// ─── Site Settings helpers ────────────────────────────────
+function get_site_settings(): array {
+    try {
+        $stmt = db()->query('SELECT setting_key, setting_value FROM site_settings');
+        $settings = [];
+        while ($row = $stmt->fetch()) {
+            $settings[$row['setting_key']] = $row['setting_value'];
+        }
+        return $settings;
+    } catch (\PDOException $e) {
+        // Table may not exist yet (before setup)
+        return [];
+    }
+}
+
+function get_setting(string $key, ?string $default = null): ?string {
+    try {
+        $stmt = db()->prepare('SELECT setting_value FROM site_settings WHERE setting_key = ?');
+        $stmt->execute([$key]);
+        $val = $stmt->fetchColumn();
+        return $val !== false ? $val : $default;
+    } catch (\PDOException $e) {
+        return $default;
+    }
+}
+
+function set_setting(string $key, string $value): void {
+    $existing = get_setting($key);
+    if ($existing !== null) {
+        $stmt = db()->prepare('UPDATE site_settings SET setting_value = ?, updated_at = CURRENT_TIMESTAMP WHERE setting_key = ?');
+        $stmt->execute([$value, $key]);
+    } else {
+        $stmt = db()->prepare('INSERT INTO site_settings (setting_key, setting_value) VALUES (?, ?)');
+        $stmt->execute([$key, $value]);
+    }
+}
