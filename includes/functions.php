@@ -486,6 +486,7 @@ function get_course_analytics(): array {
 function get_candidates_for_review(string $status = 'all'): array {
     $sql = '
         SELECT u.*, cr.*,
+               u.id as id,
                (SELECT COUNT(*) FROM user_enrollments WHERE user_id = u.id) as enrollment_count,
                (SELECT COUNT(*) FROM user_lesson_progress WHERE user_id = u.id) as lessons_completed
         FROM users u

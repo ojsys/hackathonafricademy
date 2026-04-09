@@ -128,11 +128,15 @@ require_once __DIR__ . '/../includes/header.php';
                         <?php if ($q['starter_code']): ?>
                         <div class="mb-2 small text-muted">Starter code provided. Modify it to complete the challenge:</div>
                         <?php endif; ?>
-                        <textarea class="exam-code-editor" 
-                                  name="code_<?= $q['id'] ?>" 
-                                  data-testid="code-answer-<?= $num ?>"
-                                  placeholder="Write your code here..."
-                                  oninput="markAnswered(<?= $num ?>)"
+                        <div id="exam-monaco-<?= $q['id'] ?>"
+                             data-question-id="<?= $q['id'] ?>"
+                             data-question-num="<?= $num ?>"
+                             data-starter="<?= h($q['starter_code'] ?? '') ?>"
+                             data-testid="code-answer-<?= $num ?>"
+                             style="height: 220px; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden;"></div>
+                        <textarea name="code_<?= $q['id'] ?>"
+                                  id="exam-textarea-<?= $q['id'] ?>"
+                                  style="display:none;"
                         ><?= h($q['starter_code'] ?? '') ?></textarea>
                     <?php endif; ?>
                 </div>
@@ -187,6 +191,60 @@ function markAnswered(num) {
     const dot = document.querySelector(`.q-dot[data-q="${num}"]`);
     if (dot) dot.classList.add('answered');
 }
+
+// Monaco Editor for coding questions
+const monacoEditors = {};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/loader.js"></script>
+<script>
+require.config({ paths: { vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs' } });
+require(['vs/editor/editor.main'], function () {
+    monaco.editor.defineTheme('hackathonDark', {
+        base: 'vs-dark', inherit: true, rules: [],
+        colors: {
+            'editor.background': '#0D1117',
+            'editor.foreground': '#E0E0E0',
+            'editorCursor.foreground': '#F8B526',
+            'editor.lineHighlightBackground': '#1C233333',
+            'editor.selectionBackground': '#F8B52633'
+        }
+    });
+
+    document.querySelectorAll('[id^="exam-monaco-"]').forEach(function (el) {
+        const qId  = el.dataset.questionId;
+        const qNum = parseInt(el.dataset.questionNum);
+        const textarea = document.getElementById('exam-textarea-' + qId);
+
+        const editor = monaco.editor.create(el, {
+            value: textarea.value,
+            language: 'html',
+            theme: 'hackathonDark',
+            minimap: { enabled: false },
+            fontSize: 14,
+            fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
+            lineNumbers: 'on',
+            scrollBeyondLastLine: false,
+            automaticLayout: true,
+            tabSize: 2,
+            wordWrap: 'on',
+            padding: { top: 12 }
+        });
+
+        monacoEditors[qId] = editor;
+
+        editor.onDidChangeModelContent(function () {
+            textarea.value = editor.getValue();
+            markAnswered(qNum);
+        });
+    });
+
+    // Sync all Monaco editors into their textareas before form submit
+    document.getElementById('examForm').addEventListener('submit', function () {
+        Object.keys(monacoEditors).forEach(function (qId) {
+            document.getElementById('exam-textarea-' + qId).value = monacoEditors[qId].getValue();
+        });
+    });
+});
 </script>
 
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>
