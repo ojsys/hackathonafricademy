@@ -26,7 +26,8 @@ CREATE TABLE users (
     is_active TINYINT(1) NOT NULL DEFAULT 1,
     reset_token VARCHAR(64) DEFAULT NULL,
     reset_expires DATETIME DEFAULT NULL,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    skill_level ENUM('beginner','intermediate','advanced') NOT NULL DEFAULT 'beginner'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- Courses
