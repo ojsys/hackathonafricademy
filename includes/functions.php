@@ -1,6 +1,38 @@
 <?php
 require_once __DIR__ . '/../config/database.php';
 
+// ─── Error Logging ────────────────────────────────────────
+function log_error(Throwable $e): void {
+    $timestamp = date('Y-m-d H:i:s');
+    $log_file = __DIR__ . '/../logs/error.log';
+    $message = sprintf("[%s] Uncaught exception: %s in %s on line %d\nStack trace:\n%s\n\n",
+        $timestamp, $e->getMessage(), $e->getFile(), $e->getLine(), $e->getTraceAsString());
+    file_put_contents($log_file, $message, FILE_APPEND);
+
+    // If headers haven't been sent, redirect to a generic 500 error page
+    if (!headers_sent()) {
+        http_response_code(500);
+        include __DIR__ . '/../error_pages/500.php';
+        exit;
+    }
+}
+
+// Global exception handler
+set_exception_handler('log_error');
+
+// Global error handler
+set_error_handler(function ($severity, $message, $file, $line) {
+    if (!(error_reporting() & $severity)) {
+        // This error code is not included in error_reporting
+        return;
+    }
+    // Only handle errors that are actual problems, not notices or warnings
+    if ($severity === E_RECOVERABLE_ERROR || $severity === E_USER_ERROR || $severity === E_ERROR) {
+        log_error(new ErrorException($message, 0, $severity, $file, $line));
+    }
+    return false; // Let PHP's default error handler continue for non-critical errors
+});
+
 // ─── Session ──────────────────────────────────────────────
 function start_session(): void {
     if (session_status() === PHP_SESSION_NONE) {
@@ -26,7 +58,8 @@ function verify_csrf(): void {
     $token = $_POST['csrf_token'] ?? '';
     if (!hash_equals($_SESSION['csrf_token'] ?? '', $token)) {
         http_response_code(403);
-        die('Invalid security token. Please go back and try again.');
+        include __DIR__ . '/../error_pages/403.php'; // Include custom 403 page
+        exit; // Terminate script execution
     }
 }
 

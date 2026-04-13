@@ -85,42 +85,50 @@ if ($stmt->fetch()) {
 }
 
 // Create user with all profile fields
-$hash = password_hash($password, PASSWORD_BCRYPT);
-$skillLevel = trim($_POST['skill_level'] ?? 'beginner');
-if (!in_array($skillLevel, ['beginner', 'intermediate', 'advanced'])) $skillLevel = 'beginner';
-
-$stmt = db()->prepare('
-    INSERT INTO users
-        (name, email, password, role, phone, country, city, education_level,
-         years_experience, github_url, linkedin_url, bio, how_heard, skill_level)
-    VALUES (?, ?, ?, "student", ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-');
-$stmt->execute([
-    $name, $email, $hash,
-    $phone, $country, $city, $educationLevel,
-    $yearsExp, $githubUrl ?: null, $linkedinUrl ?: null, $bio, $howHeard, $skillLevel,
-]);
-$userId = db()->lastInsertId();
-
-// Auto-enroll in all published courses
-$courses = get_all_published_courses();
-foreach ($courses as $c) {
-    enroll_user($userId, $c['id']);
-}
-
-// Log in immediately
-$_SESSION['user_id'] = $userId;
-$_SESSION['csrf_token'] = bin2hex(random_bytes(32));
-
-// Send welcome email (non-blocking — failure doesn't stop registration)
 try {
-    require_once __DIR__ . '/../includes/mailer.php';
-    $loginUrl = (isset($_SERVER['HTTPS']) ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'] . '/pages/login.php';
-    email_welcome($email, $name, $loginUrl);
-} catch (Throwable $e) {
-    error_log('Welcome email failed: ' . $e->getMessage());
-}
+    $hash = password_hash($password, PASSWORD_BCRYPT);
+    $skillLevel = trim($_POST['skill_level'] ?? 'beginner');
+    if (!in_array($skillLevel, ['beginner', 'intermediate', 'advanced'])) $skillLevel = 'beginner';
 
-set_flash('success', 'Welcome, ' . $name . '! Your account is ready. Start learning below.');
-header('Location: /pages/dashboard.php');
-exit;
+    $stmt = db()->prepare('
+        INSERT INTO users
+            (name, email, password, role, phone, country, city, education_level,
+             years_experience, github_url, linkedin_url, bio, how_heard, skill_level)
+        VALUES (?, ?, ?, "student", ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ');
+    $stmt->execute([
+        $name, $email, $hash,
+        $phone, $country, $city, $educationLevel,
+        $yearsExp, $githubUrl ?: null, $linkedinUrl ?: null, $bio, $howHeard, $skillLevel,
+    ]);
+    $userId = db()->lastInsertId();
+
+    // Auto-enroll in all published courses
+    $courses = get_all_published_courses();
+    foreach ($courses as $c) {
+        enroll_user($userId, $c['id']);
+    }
+
+    // Log in immediately
+    $_SESSION['user_id'] = $userId;
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+
+    // Send welcome email (non-blocking — failure doesn't stop registration)
+    try {
+        require_once __DIR__ . '/../includes/mailer.php';
+        $loginUrl = (isset($_SERVER['HTTPS']) ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'] . '/pages/login.php';
+        email_welcome($email, $name, $loginUrl);
+    } catch (Throwable $e) {
+        log_error($e); // Using our custom log_error function
+    }
+
+    set_flash('success', 'Welcome, ' . $name . '! Your account is ready. Start learning below.');
+    header('Location: /pages/dashboard.php');
+    exit;
+
+} catch (Throwable $e) {
+    log_error($e);
+    set_flash('error', 'A system error occurred during registration. Please try again.');
+    header('Location: /pages/register.php');
+    exit;
+}
