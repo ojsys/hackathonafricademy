@@ -102,9 +102,13 @@ $pdo->exec(sql("CREATE TABLE users (
     reset_expires DATETIME,
     total_time_spent INTEGER DEFAULT 0,
     last_activity DATETIME,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    skill_level TEXT NOT NULL DEFAULT 'beginner' CHECK(skill_level IN ('beginner','intermediate','advanced'))
 )"));
-if ($isMysql) $pdo->exec("ALTER TABLE users MODIFY role VARCHAR(20) NOT NULL DEFAULT 'student'");
+if ($isMysql) {
+    $pdo->exec("ALTER TABLE users MODIFY role VARCHAR(20) NOT NULL DEFAULT 'student'");
+    $pdo->exec("ALTER TABLE users MODIFY skill_level VARCHAR(20) NOT NULL DEFAULT 'beginner'");
+}
 
 // ─── Courses ──────────────────────────────────────────────
 $pdo->exec(sql("CREATE TABLE courses (
