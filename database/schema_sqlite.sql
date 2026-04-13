@@ -32,7 +32,8 @@ CREATE TABLE users (
     linkedin_url     TEXT DEFAULT NULL,
     bio              TEXT DEFAULT NULL,
     how_heard        TEXT DEFAULT NULL,
-    created_at       TEXT NOT NULL DEFAULT (datetime('now'))
+    created_at       TEXT NOT NULL DEFAULT (datetime('now')),
+    skill_level      TEXT NOT NULL DEFAULT 'beginner' CHECK (skill_level IN ('beginner','intermediate','advanced'))
 );
 
 CREATE TABLE courses (
