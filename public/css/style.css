@@ -22,16 +22,165 @@
     --text-secondary:#A0AEC0;
     --text-muted:    #6B7A90;
     --text-on-primary: #0D1117;
-    
+
     /* Typography */
     --font-heading:  'Outfit', system-ui, sans-serif;
     --font-body:     'IBM Plex Sans', system-ui, sans-serif;
     --font-mono:     'JetBrains Mono', 'Fira Code', monospace;
-    
+
     /* Spacing & Radius */
     --radius:        6px;
     --radius-sm:     4px;
     --card-shadow:   0 1px 3px rgba(0, 0, 0, 0.4);
+
+    /* ── Bootstrap 5 variable overrides (dark theme) ── */
+    --bs-body-bg:               #0D1117;
+    --bs-body-color:            #FFFFFF;
+    --bs-secondary-color:       #A0AEC0;
+    --bs-tertiary-color:        #6B7A90;
+    --bs-card-bg:               #151B23;
+    --bs-card-border-color:     #2A3040;
+    --bs-card-cap-bg:           #1C2333;
+    --bs-card-cap-color:        #FFFFFF;
+    --bs-card-color:            #A0AEC0;
+    --bs-table-color:           #A0AEC0;
+    --bs-table-bg:              transparent;
+    --bs-table-striped-bg:      rgba(255,255,255,0.03);
+    --bs-table-hover-bg:        #1C2333;
+    --bs-table-border-color:    #2A3040;
+    --bs-border-color:          #2A3040;
+    --bs-border-color-translucent: rgba(255,255,255,0.1);
+    --bs-heading-color:         #FFFFFF;
+    --bs-link-color:            #F8B526;
+    --bs-link-hover-color:      #D49A10;
+    --bs-form-check-bg:         #0D1117;
+    --bs-input-bg:              #0D1117;
+    --bs-input-color:           #FFFFFF;
+    --bs-input-border-color:    #2A3040;
+    --bs-input-focus-border-color: #F8B526;
+    --bs-dropdown-bg:           #151B23;
+    --bs-dropdown-border-color: #2A3040;
+    --bs-dropdown-color:        #A0AEC0;
+    --bs-dropdown-link-color:   #A0AEC0;
+    --bs-dropdown-link-hover-bg: #1C2333;
+    --bs-dropdown-link-hover-color: #FFFFFF;
+    --bs-modal-bg:              #151B23;
+    --bs-modal-color:           #FFFFFF;
+    --bs-modal-header-border-color: #2A3040;
+    --bs-modal-footer-border-color: #2A3040;
+    --bs-nav-tabs-border-color: #2A3040;
+    --bs-nav-tabs-link-hover-border-color: #2A3040;
+    --bs-nav-tabs-link-active-bg: #151B23;
+    --bs-nav-tabs-link-active-color: #FFFFFF;
+    --bs-nav-tabs-link-active-border-color: #2A3040 #2A3040 #151B23;
+    --bs-breadcrumb-divider-color: #6B7A90;
+    --bs-breadcrumb-item-active-color: #6B7A90;
+    --bs-pagination-color:      #A0AEC0;
+    --bs-pagination-bg:         #151B23;
+    --bs-pagination-border-color: #2A3040;
+    --bs-pagination-hover-bg:   #1C2333;
+    --bs-pagination-hover-color: #FFFFFF;
+    --bs-pagination-active-bg:  #F8B526;
+    --bs-pagination-active-border-color: #F8B526;
+    --bs-pagination-active-color: #0D1117;
+    --bs-list-group-bg:         #151B23;
+    --bs-list-group-border-color: #2A3040;
+    --bs-list-group-color:      #A0AEC0;
+    --bs-list-group-action-hover-bg: #1C2333;
+    --bs-list-group-action-hover-color: #FFFFFF;
+}
+
+/* ─── Bootstrap dark overrides ─────────────────────── */
+.card-header {
+    background: var(--surface-hover);
+    border-bottom-color: var(--border);
+    color: var(--text-primary);
+}
+.card-footer {
+    background: var(--surface-hover);
+    border-top-color: var(--border);
+    color: var(--text-secondary);
+}
+.modal-content {
+    background: var(--surface);
+    border-color: var(--border);
+    color: var(--text-primary);
+}
+.modal-header, .modal-footer {
+    border-color: var(--border);
+}
+.list-group-item {
+    background: var(--surface);
+    border-color: var(--border);
+    color: var(--text-secondary);
+}
+.list-group-item-action:hover {
+    background: var(--surface-hover);
+    color: var(--text-primary);
+}
+.nav-tabs .nav-link {
+    color: var(--text-secondary);
+    border-color: transparent;
+}
+.nav-tabs .nav-link:hover {
+    color: var(--text-primary);
+    border-color: var(--border);
+}
+.nav-tabs .nav-link.active {
+    background: var(--surface);
+    border-color: var(--border) var(--border) var(--surface);
+    color: var(--text-primary);
+}
+.nav-tabs {
+    border-bottom-color: var(--border);
+}
+.pagination .page-link {
+    background: var(--surface);
+    border-color: var(--border);
+    color: var(--text-secondary);
+}
+.pagination .page-link:hover {
+    background: var(--surface-hover);
+    color: var(--text-primary);
+}
+.pagination .page-item.active .page-link {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: var(--bg);
+}
+.pagination .page-item.disabled .page-link {
+    background: var(--surface);
+    color: var(--text-muted);
+}
+.btn-outline-success {
+    color: var(--success);
+    border-color: var(--success);
+    background: transparent;
+}
+.btn-outline-success:hover {
+    background: var(--success);
+    border-color: var(--success);
+    color: #fff;
+}
+.btn-outline-danger {
+    color: var(--danger);
+    border-color: var(--danger);
+    background: transparent;
+}
+.btn-outline-danger:hover {
+    background: var(--danger);
+    border-color: var(--danger);
+    color: #fff;
+}
+.btn-outline-warning {
+    color: var(--warning);
+    border-color: var(--warning);
+    background: transparent;
+}
+.btn-outline-warning:hover {
+    background: var(--warning);
+    border-color: var(--warning);
+    color: var(--bg);
 }
 
 /* ─── Reset & Base ──────────────────────────────────── */
