@@ -12,7 +12,85 @@ if (!$moduleId && $lessonId) {
     if ($l) $moduleId = $l['module_id'];
 }
 
-if (!$moduleId) { header('Location: /admin/courses.php'); exit; }
+// No module selected — show overview of all lessons grouped by course/module
+if (!$moduleId) {
+    $allCourses = db()->query('SELECT * FROM courses ORDER BY order_index')->fetchAll();
+    require_once __DIR__ . '/../includes/header.php';
+    ?>
+    <div class="admin-layout">
+        <?php require __DIR__ . '/partials/sidebar.php'; ?>
+        <div class="admin-content">
+            <div class="d-flex align-items-center justify-content-between mb-4">
+                <h1 class="admin-page-title mb-0">Lessons</h1>
+                <a href="/admin/courses.php" class="btn btn-outline-secondary btn-sm">
+                    <i class="bi bi-collection me-1"></i>Manage Courses
+                </a>
+            </div>
+            <?php render_flash(); ?>
+            <?php if (empty($allCourses)): ?>
+            <div class="card"><div class="card-body text-center text-muted py-5">No courses yet. <a href="/admin/courses.php?action=new">Create a course</a> first.</div></div>
+            <?php endif; ?>
+            <?php foreach ($allCourses as $course):
+                $modules = get_modules_for_course($course['id']);
+            ?>
+            <div class="card mb-4">
+                <div class="card-header d-flex align-items-center justify-content-between py-3 px-4">
+                    <h5 class="fw-700 mb-0"><?= h($course['title']) ?></h5>
+                    <span class="badge-chip <?= $course['status'] === 'published' ? 'chip-published' : 'chip-draft' ?>"><?= $course['status'] ?></span>
+                </div>
+                <?php if (empty($modules)): ?>
+                <div class="card-body text-muted small py-3 px-4">No modules in this course.</div>
+                <?php else: ?>
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th style="width:30%">Module</th>
+                                <th>Lessons</th>
+                                <th style="width:130px">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        <?php foreach ($modules as $mod):
+                            $modLessons = get_lessons_for_module($mod['id']);
+                        ?>
+                            <tr>
+                                <td class="fw-600"><?= h($mod['title']) ?></td>
+                                <td>
+                                    <?php if (empty($modLessons)): ?>
+                                    <span class="text-muted small">No lessons yet</span>
+                                    <?php else: ?>
+                                    <ul class="mb-0 ps-3 small">
+                                        <?php foreach ($modLessons as $ls): ?>
+                                        <li><?= h($ls['title']) ?><?= $ls['video_url'] ? ' <i class="bi bi-play-btn text-success" title="Has video"></i>' : '' ?></li>
+                                        <?php endforeach; ?>
+                                    </ul>
+                                    <?php endif; ?>
+                                </td>
+                                <td>
+                                    <div class="d-flex gap-1">
+                                        <a href="/admin/lessons.php?module_id=<?= $mod['id'] ?>" class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-pencil"></i> Manage
+                                        </a>
+                                        <a href="/admin/lessons.php?module_id=<?= $mod['id'] ?>&action=new" class="btn btn-sm btn-outline-success">
+                                            <i class="bi bi-plus-lg"></i>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+                <?php endif; ?>
+            </div>
+            <?php endforeach; ?>
+        </div>
+    </div>
+    <?php
+    require_once __DIR__ . '/../includes/footer.php';
+    exit;
+}
 
 $stmt = db()->prepare('SELECT m.*, c.id AS course_id, c.title AS course_title FROM modules m JOIN courses c ON c.id = m.course_id WHERE m.id = ?');
 $stmt->execute([$moduleId]);
