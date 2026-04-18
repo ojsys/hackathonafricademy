@@ -11,7 +11,7 @@ $faviconPath = $siteSettings['favicon_path'] ?? '/public/img/favicon.png';
 $siteName = $siteSettings['site_name'] ?? 'HackathonAfrica LMS';
 ?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-bs-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -45,6 +45,14 @@ $siteName = $siteSettings['site_name'] ?? 'HackathonAfrica LMS';
     <!-- Favicon -->
     <link rel="icon" type="image/png" href="<?= h($faviconPath) ?>">
     <link rel="apple-touch-icon" href="<?= h($faviconPath) ?>">
+
+    <!-- Apply saved theme before render to avoid flash -->
+    <script>
+        (function(){
+            var t = localStorage.getItem('theme') || 'dark';
+            document.documentElement.setAttribute('data-bs-theme', t);
+        })();
+    </script>
 </head>
 <body>
 
@@ -88,6 +96,12 @@ $siteName = $siteSettings['site_name'] ?? 'HackathonAfrica LMS';
                 <?php endif; ?>
             </ul>
             <ul class="navbar-nav ms-auto align-items-center gap-2">
+                <li class="nav-item">
+                    <button id="theme-toggle" class="btn btn-sm btn-outline-secondary border-0" title="Toggle theme" aria-label="Toggle light/dark theme">
+                        <i class="bi bi-sun-fill theme-icon-light"></i>
+                        <i class="bi bi-moon-fill theme-icon-dark d-none"></i>
+                    </button>
+                </li>
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle d-flex align-items-center gap-2" href="#" data-bs-toggle="dropdown" data-testid="user-menu">
                         <span class="user-avatar"><?= strtoupper(substr($user['name'], 0, 1)) ?></span>
@@ -101,7 +115,13 @@ $siteName = $siteSettings['site_name'] ?? 'HackathonAfrica LMS';
                 </li>
             </ul>
             <?php else: ?>
-            <ul class="navbar-nav ms-auto gap-2">
+            <ul class="navbar-nav ms-auto gap-2 align-items-center">
+                <li class="nav-item">
+                    <button id="theme-toggle" class="btn btn-sm btn-outline-secondary border-0" title="Toggle theme" aria-label="Toggle light/dark theme">
+                        <i class="bi bi-sun-fill theme-icon-light"></i>
+                        <i class="bi bi-moon-fill theme-icon-dark d-none"></i>
+                    </button>
+                </li>
                 <li class="nav-item">
                     <a class="nav-link" href="/pages/login.php" data-testid="nav-login">Login</a>
                 </li>

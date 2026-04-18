@@ -3,21 +3,52 @@
  */
 
 document.addEventListener('DOMContentLoaded', function() {
+    // Theme toggle
+    initThemeToggle();
+
     // Animate progress bars on page load
     initProgressBars();
-    
+
     // Initialize confirm dialogs
     initConfirmDialogs();
-    
+
     // Initialize code exercises
     initCodeExercises();
-    
+
     // Initialize hint toggles
     initHintToggles();
-    
+
     // Track user activity
     trackActivity();
 });
+
+function initThemeToggle() {
+    const html = document.documentElement;
+    const btn = document.getElementById('theme-toggle');
+    if (!btn) return;
+
+    const saved = localStorage.getItem('theme') || 'dark';
+    applyTheme(saved);
+
+    btn.addEventListener('click', () => {
+        const next = html.getAttribute('data-bs-theme') === 'dark' ? 'light' : 'dark';
+        localStorage.setItem('theme', next);
+        applyTheme(next);
+    });
+
+    function applyTheme(theme) {
+        html.setAttribute('data-bs-theme', theme);
+        const lightIcon = btn.querySelector('.theme-icon-light');
+        const darkIcon  = btn.querySelector('.theme-icon-dark');
+        if (theme === 'dark') {
+            lightIcon.classList.remove('d-none');
+            darkIcon.classList.add('d-none');
+        } else {
+            lightIcon.classList.add('d-none');
+            darkIcon.classList.remove('d-none');
+        }
+    }
+}
 
 /**
  * Animate progress bars when they come into view
