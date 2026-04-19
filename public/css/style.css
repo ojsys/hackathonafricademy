@@ -1119,6 +1119,59 @@ h6 { font-size: 1rem; font-weight: 600; }
     color: var(--text-secondary);
 }
 
+/* ── Lesson editor — video section card ───────────────────── */
+.lesson-video-card {
+    border: 2px solid #3b82f6;
+    border-radius: var(--radius);
+    overflow: hidden;
+    background: var(--surface);
+}
+.lesson-video-card-header {
+    display: flex;
+    align-items: center;
+    gap: .9rem;
+    padding: .9rem 1.25rem;
+    background: rgba(59,130,246,0.1);
+    border-bottom: 1px solid rgba(59,130,246,0.25);
+}
+.lesson-video-icon {
+    width: 2.4rem;
+    height: 2.4rem;
+    background: rgba(59,130,246,0.2);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 1.1rem;
+    color: #3b82f6;
+}
+.lesson-video-card-body {
+    padding: 1.25rem;
+}
+.lesson-video-preview-frame {
+    border-radius: var(--radius);
+    overflow: hidden;
+    max-width: 540px;
+    border: 1px solid var(--border);
+}
+
+[data-bs-theme="light"] .lesson-video-card {
+    background: #f0f7ff;
+}
+[data-bs-theme="light"] .lesson-video-card-header {
+    background: rgba(59,130,246,0.07);
+}
+
+/* Jodit editor wrapper flush with card */
+.jodit-container {
+    border: none !important;
+    border-radius: 0 !important;
+}
+.jodit-toolbar__box {
+    border-bottom: 1px solid var(--border) !important;
+}
+
 /* Video placeholder */
 .video-placeholder {
     background: var(--surface);

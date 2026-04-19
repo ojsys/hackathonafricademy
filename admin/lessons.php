@@ -162,40 +162,88 @@ require_once __DIR__ . '/../includes/header.php';
                 <i class="bi bi-arrow-left me-1"></i>Back to Lessons
             </a>
         </div>
-        <div class="card">
-            <div class="card-body p-4">
-                <form method="POST">
-                    <?= csrf_field() ?>
-                    <input type="hidden" name="save_lesson" value="1">
-                    <input type="hidden" name="lesson_id" value="<?= $editLesson ? $editLesson['id'] : '' ?>">
-                    <div class="row g-3 mb-3">
+        <form method="POST" id="lesson-form">
+            <?= csrf_field() ?>
+            <input type="hidden" name="save_lesson" value="1">
+            <input type="hidden" name="lesson_id" value="<?= $editLesson ? $editLesson['id'] : '' ?>">
+
+            <!-- Basic info card -->
+            <div class="card mb-3">
+                <div class="card-body p-4">
+                    <div class="row g-3">
                         <div class="col-md-8">
-                            <label class="form-label">Lesson Title</label>
-                            <input type="text" name="title" class="form-control" value="<?= h($editLesson['title'] ?? '') ?>" required autofocus>
+                            <label class="form-label fw-600">Lesson Title</label>
+                            <input type="text" name="title" class="form-control form-control-lg" value="<?= h($editLesson['title'] ?? '') ?>" required autofocus placeholder="e.g. Introduction to CSS Flexbox">
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label">Order</label>
-                            <input type="number" name="order_index" class="form-control" value="<?= $editLesson ? $editLesson['order_index'] : (count($lessons) + 1) ?>">
+                            <label class="form-label fw-600">Order</label>
+                            <input type="number" name="order_index" class="form-control form-control-lg" value="<?= $editLesson ? $editLesson['order_index'] : (count($lessons) + 1) ?>">
                         </div>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label">Video URL (optional)</label>
-                        <input type="url" name="video_url" class="form-control" value="<?= h($editLesson['video_url'] ?? '') ?>" placeholder="https://www.youtube.com/embed/...">
-                    </div>
-                    <div class="mb-4">
-                        <label class="form-label d-flex align-items-center justify-content-between">
-                            <span>Content <span class="text-muted fw-400">(HTML supported)</span></span>
-                        </label>
-                        <textarea name="content" class="form-control" rows="20" style="font-family:monospace;font-size:0.85rem;"><?= htmlspecialchars($editLesson['content'] ?? '', ENT_QUOTES) ?></textarea>
-                        <small class="text-muted">Write HTML directly. Wrap code examples in <code>&lt;div class="code-block"&gt;&lt;pre&gt;&lt;code&gt;...&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;</code></small>
-                    </div>
-                    <div class="d-flex gap-2">
-                        <button class="btn btn-primary"><?= $editLesson ? 'Update Lesson' : 'Create Lesson' ?></button>
-                        <a href="/admin/lessons.php?module_id=<?= $moduleId ?>" class="btn btn-outline-secondary">Cancel</a>
-                    </div>
-                </form>
+                </div>
             </div>
-        </div>
+
+            <!-- Content editor card -->
+            <div class="card mb-3">
+                <div class="card-header px-4 py-3">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="bi bi-file-richtext text-primary"></i>
+                        <span class="fw-600">Lesson Content</span>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <textarea id="lesson-wysiwyg" name="content"><?= htmlspecialchars($editLesson['content'] ?? '', ENT_QUOTES) ?></textarea>
+                </div>
+            </div>
+
+            <!-- Video section — visually distinct -->
+            <div class="lesson-video-card mb-4">
+                <div class="lesson-video-card-header">
+                    <div class="lesson-video-icon">
+                        <i class="bi bi-play-circle-fill"></i>
+                    </div>
+                    <div>
+                        <div class="fw-600">Video Lesson</div>
+                        <div class="small" style="color:var(--text-muted)">Paste a YouTube or Vimeo embed URL — optional</div>
+                    </div>
+                    <?php if (!empty($editLesson['video_url'])): ?>
+                    <span class="badge bg-success ms-auto"><i class="bi bi-check-circle me-1"></i>Video set</span>
+                    <?php endif; ?>
+                </div>
+                <div class="lesson-video-card-body">
+                    <div class="input-group mb-2">
+                        <span class="input-group-text"><i class="bi bi-link-45deg"></i></span>
+                        <input type="url" name="video_url" id="video-url-input" class="form-control"
+                               value="<?= h($editLesson['video_url'] ?? '') ?>"
+                               placeholder="https://www.youtube.com/embed/VIDEO_ID">
+                        <button type="button" id="preview-video-btn" class="btn btn-outline-primary">
+                            <i class="bi bi-eye me-1"></i>Preview
+                        </button>
+                        <button type="button" id="clear-video-btn" class="btn btn-outline-danger" <?= empty($editLesson['video_url']) ? 'style="display:none"' : '' ?>>
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    </div>
+                    <div class="small" style="color:var(--text-muted)">
+                        <i class="bi bi-info-circle me-1"></i>
+                        Use the embed URL, not the watch URL. YouTube: <code>youtube.com/embed/ID</code> &nbsp;|&nbsp; Vimeo: <code>player.vimeo.com/video/ID</code>
+                    </div>
+                    <div id="video-preview-container" class="mt-3 <?= empty($editLesson['video_url']) ? 'd-none' : '' ?>">
+                        <?php if (!empty($editLesson['video_url'])): ?>
+                        <div class="ratio ratio-16x9 lesson-video-preview-frame">
+                            <iframe src="<?= h($editLesson['video_url']) ?>" frameborder="0" allowfullscreen allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"></iframe>
+                        </div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary px-4">
+                    <i class="bi bi-check-lg me-1"></i><?= $editLesson ? 'Update Lesson' : 'Create Lesson' ?>
+                </button>
+                <a href="/admin/lessons.php?module_id=<?= $moduleId ?>" class="btn btn-outline-secondary">Cancel</a>
+            </div>
+        </form>
 
         <?php else: ?>
         <!-- Lessons list -->
@@ -245,4 +293,87 @@ require_once __DIR__ . '/../includes/header.php';
     </div>
 </div>
 
+<?php if ($action === 'new' || $action === 'edit'): ?>
+<link href="https://cdn.jsdelivr.net/npm/jodit@3.24.5/build/jodit.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/jodit@3.24.5/build/jodit.min.js"></script>
+<script>
+(function () {
+    var currentTheme = document.documentElement.getAttribute('data-bs-theme') || 'dark';
+    var isDark = currentTheme === 'dark';
+
+    var editor = Jodit.make('#lesson-wysiwyg', {
+        height: 540,
+        theme: isDark ? 'dark' : 'default',
+        toolbarButtonSize: 'middle',
+        buttons: [
+            'bold', 'italic', 'underline', 'strikethrough', '|',
+            'ul', 'ol', '|',
+            'paragraph', '|',
+            'link', 'image', '|',
+            'table', '|',
+            'source', '|',
+            'undo', 'redo'
+        ],
+        extraButtons: [],
+        showXPathInStatusbar: false,
+        showCharsCounter: true,
+        showWordsCounter: true,
+        allowResizeX: false,
+        allowResizeY: true,
+        minHeight: 300,
+        defaultMode: Jodit.constants.MODE_WYSIWYG,
+        language: 'en',
+        style: isDark ? {
+            background: '#151B23',
+            color: '#ffffff',
+        } : {},
+        editorClassName: 'lesson-wysiwyg-body',
+    });
+
+    // Observe theme changes and update editor theme
+    var observer = new MutationObserver(function (mutations) {
+        mutations.forEach(function (m) {
+            if (m.attributeName === 'data-bs-theme') {
+                var t = document.documentElement.getAttribute('data-bs-theme');
+                editor.setTheme(t === 'dark' ? 'dark' : 'default');
+            }
+        });
+    });
+    observer.observe(document.documentElement, { attributes: true });
+
+    // Video preview
+    var videoInput   = document.getElementById('video-url-input');
+    var previewBtn   = document.getElementById('preview-video-btn');
+    var clearBtn     = document.getElementById('clear-video-btn');
+    var previewCont  = document.getElementById('video-preview-container');
+
+    function renderPreview(url) {
+        if (!url) { previewCont.classList.add('d-none'); previewCont.innerHTML = ''; return; }
+        previewCont.innerHTML = '<div class="ratio ratio-16x9 lesson-video-preview-frame"><iframe src="' +
+            url.replace(/"/g, '&quot;') +
+            '" frameborder="0" allowfullscreen allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"></iframe></div>';
+        previewCont.classList.remove('d-none');
+    }
+
+    if (previewBtn) {
+        previewBtn.addEventListener('click', function () {
+            renderPreview(videoInput.value.trim());
+        });
+    }
+    if (clearBtn) {
+        clearBtn.addEventListener('click', function () {
+            videoInput.value = '';
+            previewCont.classList.add('d-none');
+            previewCont.innerHTML = '';
+            clearBtn.style.display = 'none';
+        });
+    }
+    if (videoInput) {
+        videoInput.addEventListener('input', function () {
+            clearBtn.style.display = this.value.trim() ? '' : 'none';
+        });
+    }
+})();
+</script>
+<?php endif; ?>
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>
