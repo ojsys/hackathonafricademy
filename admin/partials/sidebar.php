@@ -28,6 +28,12 @@ $currentPage = basename($_SERVER['PHP_SELF']);
     <a href="/admin/quizzes.php" class="<?= $currentPage === 'quizzes.php' ? 'active' : '' ?>" data-testid="sidebar-quizzes">
         <i class="bi bi-question-circle"></i> Quizzes
     </a>
+    <a href="/admin/qualifying_exam.php" class="<?= $currentPage === 'qualifying_exam.php' ? 'active' : '' ?>">
+        <i class="bi bi-shield-check"></i> Final Exam
+    </a>
+    <a href="/admin/proctor_images.php" class="<?= $currentPage === 'proctor_images.php' ? 'active' : '' ?>">
+        <i class="bi bi-camera"></i> Proctor Images
+    </a>
     
     <div class="sidebar-section">Quick Links</div>
     <a href="/admin/settings.php" class="<?= $currentPage === 'settings.php' ? 'active' : '' ?>" data-testid="sidebar-settings">

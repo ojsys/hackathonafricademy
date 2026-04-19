@@ -5,6 +5,9 @@ require_login();
 $user = current_user();
 $courses = get_all_published_courses();
 $eligible = is_eligible($user['id']);
+$qualifyingExam = get_qualifying_exam();
+$qualifyingBest = get_best_qualifying_attempt($user['id']);
+$qualifyingPassed = has_passed_qualifying_exam($user['id']);
 
 // Stats
 $totalLessons = 0;
@@ -178,16 +181,51 @@ require_once __DIR__ . '/../includes/header.php';
                         <span class="small <?= $complete ? 'fw-600' : 'text-muted' ?>"><?= h($c['title']) ?></span>
                     </div>
                     <?php endforeach; ?>
-                    <?php if ($eligible): ?>
+                    <?php if ($qualifyingExam): ?>
+                    <div class="d-flex align-items-center gap-2 mb-2 mt-1 pt-2" style="border-top:1px solid var(--border)">
+                        <i class="bi bi-<?= $qualifyingPassed ? 'shield-fill-check text-success' : ($eligible ? 'shield-check' : 'shield text-muted') ?> fs-5"></i>
+                        <span class="small <?= $qualifyingPassed ? 'fw-600' : 'text-muted' ?>">Final Exam<?= $qualifyingPassed ? ' ✓' : '' ?></span>
+                    </div>
+                    <?php endif; ?>
+                    <?php if ($qualifyingPassed): ?>
                     <div class="alert alert-success small mt-3 mb-0">
-                        <i class="bi bi-check-circle-fill me-1"></i>
-                        <strong>Congratulations!</strong> You are eligible for HackathonAfrica.
+                        <i class="bi bi-trophy-fill me-1"></i>
+                        <strong>Fully Qualified!</strong> You have passed the qualifying exam.
+                    </div>
+                    <?php elseif ($eligible): ?>
+                    <div class="alert alert-warning small mt-3 mb-0">
+                        <i class="bi bi-shield-check me-1"></i>
+                        Courses complete — <a href="/pages/qualifying_exam.php" class="fw-600">take the final exam</a>.
                     </div>
                     <?php else: ?>
-                    <p class="text-muted small mt-3 mb-0">Complete all courses and pass all quizzes to unlock your eligibility badge.</p>
+                    <p class="text-muted small mt-3 mb-0">Complete all courses and pass all quizzes to unlock the final exam.</p>
                     <?php endif; ?>
                 </div>
             </div>
+
+            <!-- Final Exam card -->
+            <?php if ($qualifyingExam): ?>
+            <div class="card mb-3" style="border-color:<?= $qualifyingPassed ? 'var(--success)' : ($eligible ? 'var(--primary)' : 'var(--border)') ?>">
+                <div class="card-body p-3">
+                    <h6 class="fw-700 mb-1"><i class="bi bi-shield-check me-1" style="color:var(--primary)"></i>Final Exam</h6>
+                    <?php if ($qualifyingPassed): ?>
+                    <p class="small text-success mb-2"><i class="bi bi-trophy-fill me-1"></i>Passed — <?= $qualifyingBest['percentage'] ?>%</p>
+                    <?php elseif ($qualifyingBest): ?>
+                    <p class="small text-muted mb-2">Best score: <strong class="text-danger"><?= $qualifyingBest['percentage'] ?>%</strong> — keep trying!</p>
+                    <?php elseif ($eligible): ?>
+                    <p class="small text-muted mb-2">You're ready! Take the proctored final exam.</p>
+                    <?php else: ?>
+                    <p class="small text-muted mb-2">Complete all courses to unlock.</p>
+                    <?php endif; ?>
+                    <a href="/pages/qualifying_exam.php"
+                       class="btn btn-sm w-100 <?= $eligible ? 'btn-primary' : 'btn-outline-secondary' ?>"
+                       <?= !$eligible ? 'disabled' : '' ?>>
+                        <?= $qualifyingPassed ? 'View Result' : ($qualifyingBest ? 'Retake Exam' : 'Start Exam') ?>
+                        <i class="bi bi-arrow-right ms-1"></i>
+                    </a>
+                </div>
+            </div>
+            <?php endif; ?>
 
             <!-- Quick links -->
             <div class="card">

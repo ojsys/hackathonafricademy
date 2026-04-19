@@ -341,6 +341,60 @@ function has_completed_exercise(int $userId, int $exerciseId): bool {
     return (bool)$stmt->fetch();
 }
 
+// ─── Qualifying Exam helpers ──────────────────────────────
+
+function get_qualifying_exam(): ?array {
+    return db()->query('SELECT * FROM qualifying_exam WHERE is_active = 1 ORDER BY id DESC LIMIT 1')->fetch() ?: null;
+}
+
+function get_qualifying_questions(int $examId): array {
+    $stmt = db()->prepare('SELECT * FROM qualifying_questions WHERE exam_id = ? ORDER BY order_index');
+    $stmt->execute([$examId]);
+    return $stmt->fetchAll();
+}
+
+function get_active_qualifying_attempt(int $userId): ?array {
+    $stmt = db()->prepare('SELECT * FROM qualifying_attempts WHERE user_id = ? AND completed_at IS NULL ORDER BY started_at DESC LIMIT 1');
+    $stmt->execute([$userId]);
+    return $stmt->fetch() ?: null;
+}
+
+function get_best_qualifying_attempt(int $userId): ?array {
+    $stmt = db()->prepare('SELECT * FROM qualifying_attempts WHERE user_id = ? AND completed_at IS NOT NULL ORDER BY percentage DESC, completed_at DESC LIMIT 1');
+    $stmt->execute([$userId]);
+    return $stmt->fetch() ?: null;
+}
+
+function get_qualifying_attempt(int $attemptId): ?array {
+    $stmt = db()->prepare('SELECT * FROM qualifying_attempts WHERE id = ?');
+    $stmt->execute([$attemptId]);
+    return $stmt->fetch() ?: null;
+}
+
+function get_proctor_session(int $attemptId): ?array {
+    $stmt = db()->prepare('SELECT * FROM proctor_sessions WHERE attempt_id = ? LIMIT 1');
+    $stmt->execute([$attemptId]);
+    return $stmt->fetch() ?: null;
+}
+
+function get_proctor_images_for_attempt(int $attemptId): array {
+    $stmt = db()->prepare('SELECT * FROM proctor_images WHERE attempt_id = ? ORDER BY captured_at');
+    $stmt->execute([$attemptId]);
+    return $stmt->fetchAll();
+}
+
+function get_all_proctor_images_for_user(int $userId): array {
+    $stmt = db()->prepare('SELECT pi.*, qa.percentage, qa.passed, qa.completed_at FROM proctor_images pi JOIN qualifying_attempts qa ON qa.id = pi.attempt_id WHERE pi.user_id = ? ORDER BY pi.captured_at');
+    $stmt->execute([$userId]);
+    return $stmt->fetchAll();
+}
+
+function has_passed_qualifying_exam(int $userId): bool {
+    $stmt = db()->prepare('SELECT 1 FROM qualifying_attempts WHERE user_id = ? AND passed = 1 AND completed_at IS NOT NULL');
+    $stmt->execute([$userId]);
+    return (bool)$stmt->fetch();
+}
+
 // ─── Final Exam helpers ───────────────────────────────────
 function get_final_exam_for_course(int $courseId): ?array {
     $stmt = db()->prepare('SELECT * FROM final_exams WHERE course_id = ? AND is_active = 1');
