@@ -1156,11 +1156,19 @@ h6 { font-size: 1rem; font-weight: 600; }
     border: 1px solid var(--border);
 }
 
+.lesson-current-video-bar {
+    background: rgba(46, 160, 67, 0.1);
+    border: 1px solid rgba(46, 160, 67, 0.3) !important;
+}
+
 [data-bs-theme="light"] .lesson-video-card {
     background: #f0f7ff;
 }
 [data-bs-theme="light"] .lesson-video-card-header {
     background: rgba(59,130,246,0.07);
+}
+[data-bs-theme="light"] .lesson-current-video-bar {
+    background: rgba(46, 160, 67, 0.07);
 }
 
 /* Jodit editor wrapper flush with card */

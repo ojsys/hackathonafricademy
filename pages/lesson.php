@@ -165,7 +165,15 @@ require_once __DIR__ . '/../includes/header.php';
                 <?= $lesson['content'] /* Content is admin-authored HTML; sanitize on input */ ?>
             </div>
 
-            <?php if ($lesson['video_url']): ?>
+            <?php if (!empty($lesson['video_path'])): ?>
+            <div class="mt-4">
+                <h6 class="fw-700 mb-2"><i class="bi bi-play-btn me-2"></i>Lesson Video</h6>
+                <video controls preload="metadata" class="w-100 rounded border" style="max-height:480px;background:#000">
+                    <source src="<?= h($lesson['video_path']) ?>" type="video/<?= h(pathinfo($lesson['video_path'], PATHINFO_EXTENSION)) ?>">
+                    Your browser does not support HTML5 video.
+                </video>
+            </div>
+            <?php elseif (!empty($lesson['video_url'])): ?>
             <div class="mt-4">
                 <h6 class="fw-700 mb-2"><i class="bi bi-play-btn me-2"></i>Lesson Video</h6>
                 <div class="ratio ratio-16x9 rounded overflow-hidden border">

@@ -109,11 +109,12 @@ if ($action === 'delete' && $lessonId) {
 // Handle save
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_lesson'])) {
     verify_csrf();
-    $title    = trim($_POST['title'] ?? '');
-    $content  = $_POST['content'] ?? '';  // WYSIWYG HTML — sanitize in production
-    $videoUrl = trim($_POST['video_url'] ?? '');
-    $order    = (int)($_POST['order_index'] ?? 0);
-    $lid      = filter_input(INPUT_POST, 'lesson_id', FILTER_VALIDATE_INT);
+    $title     = trim($_POST['title'] ?? '');
+    $content   = $_POST['content'] ?? '';
+    $videoUrl  = trim($_POST['video_url'] ?? '');
+    $order     = (int)($_POST['order_index'] ?? 0);
+    $lid       = filter_input(INPUT_POST, 'lesson_id', FILTER_VALIDATE_INT);
+    $deleteVid = ($_POST['delete_uploaded_video'] ?? '0') === '1';
 
     if (strlen($title) < 2) {
         set_flash('error', 'Lesson title is required.');
@@ -121,21 +122,56 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_lesson'])) {
         exit;
     }
 
+    $existing  = $lid ? get_lesson($lid) : null;
+    $videoPath = $existing['video_path'] ?? null;
+
+    // Handle file upload
+    if (!empty($_FILES['video_file']['name']) && $_FILES['video_file']['error'] === UPLOAD_ERR_OK) {
+        $file = $_FILES['video_file'];
+        $ext  = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+        if (!in_array($ext, ['mp4', 'webm', 'ogg', 'mov'])) {
+            set_flash('error', 'Invalid video format. Accepted: MP4, WebM, OGG, MOV.');
+            header('Location: /admin/lessons.php?module_id=' . $moduleId . ($lid ? '&action=edit&id=' . $lid : '&action=new'));
+            exit;
+        }
+        $uploadDir = __DIR__ . '/../public/videos/lessons/';
+        if (!is_dir($uploadDir)) @mkdir($uploadDir, 0755, true);
+        $newName = 'lesson_' . bin2hex(random_bytes(8)) . '.' . $ext;
+        if (move_uploaded_file($file['tmp_name'], $uploadDir . $newName)) {
+            if (!empty($existing['video_path'])) {
+                $old = __DIR__ . '/../' . ltrim($existing['video_path'], '/');
+                if (file_exists($old)) @unlink($old);
+            }
+            $videoPath = '/public/videos/lessons/' . $newName;
+        } else {
+            set_flash('error', 'Upload failed — check server folder permissions (public/videos/lessons/).');
+            header('Location: /admin/lessons.php?module_id=' . $moduleId . ($lid ? '&action=edit&id=' . $lid : '&action=new'));
+            exit;
+        }
+    } elseif ($deleteVid) {
+        if (!empty($existing['video_path'])) {
+            $old = __DIR__ . '/../' . ltrim($existing['video_path'], '/');
+            if (file_exists($old)) @unlink($old);
+        }
+        $videoPath = null;
+    }
+
     if ($lid) {
-        $stmt = db()->prepare('UPDATE lessons SET title=?, content=?, video_url=?, order_index=? WHERE id=?');
-        $stmt->execute([$title, $content, $videoUrl ?: null, $order, $lid]);
+        $stmt = db()->prepare('UPDATE lessons SET title=?, content=?, video_url=?, video_path=?, order_index=? WHERE id=?');
+        $stmt->execute([$title, $content, $videoUrl ?: null, $videoPath, $order, $lid]);
         set_flash('success', 'Lesson updated.');
     } else {
-        $stmt = db()->prepare('INSERT INTO lessons (module_id, title, content, video_url, order_index) VALUES (?,?,?,?,?)');
-        $stmt->execute([$moduleId, $title, $content, $videoUrl ?: null, $order]);
+        $stmt = db()->prepare('INSERT INTO lessons (module_id, title, content, video_url, video_path, order_index) VALUES (?,?,?,?,?,?)');
+        $stmt->execute([$moduleId, $title, $content, $videoUrl ?: null, $videoPath, $order]);
         set_flash('success', 'Lesson created.');
     }
     header('Location: /admin/lessons.php?module_id=' . $moduleId);
     exit;
 }
 
-$lessons   = get_lessons_for_module($moduleId);
+$lessons    = get_lessons_for_module($moduleId);
 $editLesson = ($action === 'edit' && $lessonId) ? get_lesson($lessonId) : null;
+$activeVideoTab = !empty($editLesson['video_path']) ? 'upload' : (!empty($editLesson['video_url']) ? 'embed' : 'upload');
 
 require_once __DIR__ . '/../includes/header.php';
 ?>
@@ -162,7 +198,7 @@ require_once __DIR__ . '/../includes/header.php';
                 <i class="bi bi-arrow-left me-1"></i>Back to Lessons
             </a>
         </div>
-        <form method="POST" id="lesson-form">
+        <form method="POST" id="lesson-form" enctype="multipart/form-data">
             <?= csrf_field() ?>
             <input type="hidden" name="save_lesson" value="1">
             <input type="hidden" name="lesson_id" value="<?= $editLesson ? $editLesson['id'] : '' ?>">
@@ -196,43 +232,105 @@ require_once __DIR__ . '/../includes/header.php';
                 </div>
             </div>
 
-            <!-- Video section — visually distinct -->
+            <!-- Video section — tabbed: Upload or Embed -->
             <div class="lesson-video-card mb-4">
                 <div class="lesson-video-card-header">
                     <div class="lesson-video-icon">
                         <i class="bi bi-play-circle-fill"></i>
                     </div>
                     <div>
-                        <div class="fw-600">Video Lesson</div>
-                        <div class="small" style="color:var(--text-muted)">Paste a YouTube or Vimeo embed URL — optional</div>
+                        <div class="fw-600">Video</div>
+                        <div class="small" style="color:var(--text-muted)">Upload a file or embed from YouTube / Vimeo — optional</div>
                     </div>
-                    <?php if (!empty($editLesson['video_url'])): ?>
-                    <span class="badge bg-success ms-auto"><i class="bi bi-check-circle me-1"></i>Video set</span>
+                    <?php if (!empty($editLesson['video_path'])): ?>
+                    <span class="badge bg-success ms-auto"><i class="bi bi-hdd me-1"></i>Uploaded</span>
+                    <?php elseif (!empty($editLesson['video_url'])): ?>
+                    <span class="badge bg-info ms-auto"><i class="bi bi-link-45deg me-1"></i>Embedded</span>
                     <?php endif; ?>
                 </div>
                 <div class="lesson-video-card-body">
-                    <div class="input-group mb-2">
-                        <span class="input-group-text"><i class="bi bi-link-45deg"></i></span>
-                        <input type="url" name="video_url" id="video-url-input" class="form-control"
-                               value="<?= h($editLesson['video_url'] ?? '') ?>"
-                               placeholder="https://www.youtube.com/embed/VIDEO_ID">
-                        <button type="button" id="preview-video-btn" class="btn btn-outline-primary">
-                            <i class="bi bi-eye me-1"></i>Preview
-                        </button>
-                        <button type="button" id="clear-video-btn" class="btn btn-outline-danger" <?= empty($editLesson['video_url']) ? 'style="display:none"' : '' ?>>
-                            <i class="bi bi-x-lg"></i>
-                        </button>
-                    </div>
-                    <div class="small" style="color:var(--text-muted)">
-                        <i class="bi bi-info-circle me-1"></i>
-                        Use the embed URL, not the watch URL. YouTube: <code>youtube.com/embed/ID</code> &nbsp;|&nbsp; Vimeo: <code>player.vimeo.com/video/ID</code>
-                    </div>
-                    <div id="video-preview-container" class="mt-3 <?= empty($editLesson['video_url']) ? 'd-none' : '' ?>">
-                        <?php if (!empty($editLesson['video_url'])): ?>
-                        <div class="ratio ratio-16x9 lesson-video-preview-frame">
-                            <iframe src="<?= h($editLesson['video_url']) ?>" frameborder="0" allowfullscreen allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"></iframe>
+                    <ul class="nav nav-tabs mb-3" id="videoTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link <?= $activeVideoTab === 'upload' ? 'active' : '' ?>"
+                                    data-bs-toggle="tab" data-bs-target="#tab-upload" type="button">
+                                <i class="bi bi-upload me-1"></i>Upload File
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link <?= $activeVideoTab === 'embed' ? 'active' : '' ?>"
+                                    data-bs-toggle="tab" data-bs-target="#tab-embed" type="button">
+                                <i class="bi bi-youtube me-1"></i>YouTube / Vimeo
+                            </button>
+                        </li>
+                    </ul>
+
+                    <div class="tab-content">
+                        <!-- Upload tab -->
+                        <div class="tab-pane fade <?= $activeVideoTab === 'upload' ? 'show active' : '' ?>" id="tab-upload" role="tabpanel">
+                            <input type="hidden" name="delete_uploaded_video" id="delete-uploaded-video" value="0">
+                            <?php if (!empty($editLesson['video_path'])): ?>
+                            <div class="d-flex align-items-center gap-3 p-3 rounded mb-3 lesson-current-video-bar">
+                                <i class="bi bi-file-play fs-2 text-success flex-shrink-0"></i>
+                                <div class="flex-grow-1 overflow-hidden">
+                                    <div class="fw-600 small">Current video</div>
+                                    <div class="text-muted small text-truncate"><?= h(basename($editLesson['video_path'])) ?></div>
+                                </div>
+                                <a href="<?= h($editLesson['video_path']) ?>" target="_blank"
+                                   class="btn btn-sm btn-outline-primary flex-shrink-0">
+                                    <i class="bi bi-eye me-1"></i>View
+                                </a>
+                                <button type="button" id="delete-video-btn"
+                                        class="btn btn-sm btn-outline-danger flex-shrink-0" title="Remove video">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                            <div id="upload-replace-label" class="form-label fw-600 small mb-1">Replace with a new file</div>
+                            <?php else: ?>
+                            <div id="upload-replace-label" class="form-label fw-600 small mb-1">Choose video file</div>
+                            <?php endif; ?>
+                            <input type="file" name="video_file" id="video-file-input"
+                                   class="form-control mb-2"
+                                   accept="video/mp4,video/webm,video/ogg,video/quicktime,.mp4,.webm,.ogg,.mov">
+                            <div class="small" style="color:var(--text-muted)">
+                                <i class="bi bi-info-circle me-1"></i>
+                                Accepted: MP4, WebM, OGG, MOV.
+                                Ensure <code>upload_max_filesize</code> and <code>post_max_size</code> in <code>php.ini</code> are large enough for your videos.
+                            </div>
+                            <div id="upload-size-info" class="small text-muted mt-1">
+                                Server limit: <strong><?= ini_get('upload_max_filesize') ?></strong>
+                            </div>
                         </div>
-                        <?php endif; ?>
+
+                        <!-- Embed tab -->
+                        <div class="tab-pane fade <?= $activeVideoTab === 'embed' ? 'show active' : '' ?>" id="tab-embed" role="tabpanel">
+                            <div class="input-group mb-2">
+                                <span class="input-group-text"><i class="bi bi-link-45deg"></i></span>
+                                <input type="url" name="video_url" id="video-url-input" class="form-control"
+                                       value="<?= h($editLesson['video_url'] ?? '') ?>"
+                                       placeholder="https://www.youtube.com/embed/VIDEO_ID">
+                                <button type="button" id="preview-video-btn" class="btn btn-outline-primary">
+                                    <i class="bi bi-eye me-1"></i>Preview
+                                </button>
+                                <button type="button" id="clear-video-btn" class="btn btn-outline-danger"
+                                        <?= empty($editLesson['video_url']) ? 'style="display:none"' : '' ?>>
+                                    <i class="bi bi-x-lg"></i>
+                                </button>
+                            </div>
+                            <div class="small mb-3" style="color:var(--text-muted)">
+                                <i class="bi bi-info-circle me-1"></i>
+                                Use the <strong>embed</strong> URL, not the watch URL.&nbsp;
+                                YouTube: <code>youtube.com/embed/ID</code> &nbsp;|&nbsp;
+                                Vimeo: <code>player.vimeo.com/video/ID</code>
+                            </div>
+                            <div id="video-preview-container" class="<?= empty($editLesson['video_url']) ? 'd-none' : '' ?>">
+                                <?php if (!empty($editLesson['video_url'])): ?>
+                                <div class="ratio ratio-16x9 lesson-video-preview-frame">
+                                    <iframe src="<?= h($editLesson['video_url']) ?>" frameborder="0" allowfullscreen
+                                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"></iframe>
+                                </div>
+                                <?php endif; ?>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -341,7 +439,7 @@ require_once __DIR__ . '/../includes/header.php';
     });
     observer.observe(document.documentElement, { attributes: true });
 
-    // Video preview
+    // ── Embed URL preview ──────────────────────────────────────
     var videoInput   = document.getElementById('video-url-input');
     var previewBtn   = document.getElementById('preview-video-btn');
     var clearBtn     = document.getElementById('clear-video-btn');
@@ -356,9 +454,7 @@ require_once __DIR__ . '/../includes/header.php';
     }
 
     if (previewBtn) {
-        previewBtn.addEventListener('click', function () {
-            renderPreview(videoInput.value.trim());
-        });
+        previewBtn.addEventListener('click', function () { renderPreview(videoInput.value.trim()); });
     }
     if (clearBtn) {
         clearBtn.addEventListener('click', function () {
@@ -371,6 +467,33 @@ require_once __DIR__ . '/../includes/header.php';
     if (videoInput) {
         videoInput.addEventListener('input', function () {
             clearBtn.style.display = this.value.trim() ? '' : 'none';
+        });
+    }
+
+    // ── Delete uploaded video ───────────────────────────────────
+    var deleteVideoBtn = document.getElementById('delete-video-btn');
+    var deleteVideoInput = document.getElementById('delete-uploaded-video');
+    if (deleteVideoBtn) {
+        deleteVideoBtn.addEventListener('click', function () {
+            if (!confirm('Remove the uploaded video from this lesson?')) return;
+            deleteVideoInput.value = '1';
+            // Hide the current-video bar
+            var bar = deleteVideoBtn.closest('.lesson-current-video-bar');
+            if (bar) bar.remove();
+            var lbl = document.getElementById('upload-replace-label');
+            if (lbl) lbl.textContent = 'Choose video file';
+        });
+    }
+
+    // ── Show selected filename ──────────────────────────────────
+    var fileInput = document.getElementById('video-file-input');
+    if (fileInput) {
+        fileInput.addEventListener('change', function () {
+            var info = document.getElementById('upload-size-info');
+            if (this.files[0] && info) {
+                var mb = (this.files[0].size / 1048576).toFixed(1);
+                info.innerHTML = 'Selected: <strong>' + this.files[0].name + '</strong> (' + mb + ' MB)';
+            }
         });
     }
 })();
