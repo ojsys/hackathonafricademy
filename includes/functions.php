@@ -630,7 +630,7 @@ function get_course_analytics(): array {
     return $analytics;
 }
 
-function get_candidates_for_review(string $status = 'all'): array {
+function get_candidates_for_review(string $status = 'all', int $limit = 0, int $offset = 0): array {
     $sql = '
         SELECT u.*, cr.*,
                u.id as id,
@@ -640,22 +640,69 @@ function get_candidates_for_review(string $status = 'all'): array {
         LEFT JOIN candidate_reviews cr ON cr.user_id = u.id
         WHERE u.role = "student"
     ';
-    
+
     if ($status !== 'all') {
         $sql .= ' AND cr.eligibility_status = ?';
     }
-    
+
     $sql .= ' ORDER BY cr.total_score DESC, u.created_at DESC';
-    
+
+    if ($limit > 0) {
+        $sql .= ' LIMIT ' . $limit . ' OFFSET ' . $offset;
+    }
+
     $stmt = db()->prepare($sql);
-    
+
     if ($status !== 'all') {
         $stmt->execute([$status]);
     } else {
         $stmt->execute();
     }
-    
+
     return $stmt->fetchAll();
+}
+
+function count_candidates_for_review(string $status = 'all'): int {
+    if ($status !== 'all') {
+        $stmt = db()->prepare('SELECT COUNT(*) FROM users u LEFT JOIN candidate_reviews cr ON cr.user_id = u.id WHERE u.role = "student" AND cr.eligibility_status = ?');
+        $stmt->execute([$status]);
+    } else {
+        $stmt = db()->query('SELECT COUNT(*) FROM users WHERE role = "student"');
+    }
+    return (int) $stmt->fetchColumn();
+}
+
+function render_pagination(int $currentPage, int $totalPages, string $baseUrl): string {
+    if ($totalPages <= 1) return '';
+
+    $html = '<nav aria-label="Page navigation" class="d-flex justify-content-center mt-3"><ul class="pagination pagination-sm mb-0">';
+
+    $html .= '<li class="page-item ' . ($currentPage <= 1 ? 'disabled' : '') . '">';
+    $html .= '<a class="page-link" href="' . h($baseUrl . 'page=' . ($currentPage - 1)) . '">&laquo; Prev</a></li>';
+
+    $start = max(1, $currentPage - 2);
+    $end   = min($totalPages, $currentPage + 2);
+
+    if ($start > 1) {
+        $html .= '<li class="page-item"><a class="page-link" href="' . h($baseUrl . 'page=1') . '">1</a></li>';
+        if ($start > 2) $html .= '<li class="page-item disabled"><span class="page-link">&hellip;</span></li>';
+    }
+
+    for ($i = $start; $i <= $end; $i++) {
+        $active = $i === $currentPage ? 'active' : '';
+        $html .= '<li class="page-item ' . $active . '"><a class="page-link" href="' . h($baseUrl . 'page=' . $i) . '">' . $i . '</a></li>';
+    }
+
+    if ($end < $totalPages) {
+        if ($end < $totalPages - 1) $html .= '<li class="page-item disabled"><span class="page-link">&hellip;</span></li>';
+        $html .= '<li class="page-item"><a class="page-link" href="' . h($baseUrl . 'page=' . $totalPages) . '">' . $totalPages . '</a></li>';
+    }
+
+    $html .= '<li class="page-item ' . ($currentPage >= $totalPages ? 'disabled' : '') . '">';
+    $html .= '<a class="page-link" href="' . h($baseUrl . 'page=' . ($currentPage + 1)) . '">Next &raquo;</a></li>';
+
+    $html .= '</ul></nav>';
+    return $html;
 }
 
 // ─── Activity logging ─────────────────────────────────────

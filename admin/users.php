@@ -47,6 +47,15 @@ if ($role && in_array($role, ['student', 'admin'])) {
 
 $whereSql = $where ? 'WHERE ' . implode(' AND ', $where) : '';
 
+$perPage = 25;
+$page    = max(1, (int) ($_GET['page'] ?? 1));
+$offset  = ($page - 1) * $perPage;
+
+$countStmt = db()->prepare("SELECT COUNT(*) FROM users u $whereSql");
+$countStmt->execute($params);
+$totalUsers = (int) $countStmt->fetchColumn();
+$totalPages = (int) ceil($totalUsers / $perPage);
+
 $stmt = db()->prepare("
     SELECT u.*,
         (SELECT COUNT(*) FROM user_enrollments WHERE user_id = u.id) AS enrollments,
@@ -54,10 +63,13 @@ $stmt = db()->prepare("
     FROM users u
     $whereSql
     ORDER BY u.created_at DESC
-    LIMIT 100
+    LIMIT $perPage OFFSET $offset
 ");
 $stmt->execute($params);
 $users = $stmt->fetchAll();
+
+$baseQueryParams = array_filter(['q' => $search, 'role' => $role]);
+$paginationBase  = '/admin/users.php?' . ($baseQueryParams ? http_build_query($baseQueryParams) . '&' : '');
 
 require_once __DIR__ . '/../includes/header.php';
 ?>
@@ -68,7 +80,7 @@ require_once __DIR__ . '/../includes/header.php';
     <div class="admin-content">
         <div class="d-flex align-items-center justify-content-between mb-4">
             <h1 class="admin-page-title mb-0">Users</h1>
-            <span class="text-muted small"><?= count($users) ?> results</span>
+            <span class="text-muted small"><?= $totalUsers ?> total &mdash; page <?= $page ?> of <?= max(1, $totalPages) ?></span>
         </div>
 
         <?php render_flash(); ?>
@@ -97,7 +109,7 @@ require_once __DIR__ . '/../includes/header.php';
 
         <div class="card">
             <div class="table-responsive">
-                <table class="table table-hover mb-0">
+                <table class="table table-hover mb-0" id="users-table">
                     <thead>
                         <tr>
                             <th>Name</th>
@@ -227,6 +239,11 @@ require_once __DIR__ . '/../includes/header.php';
                     </tbody>
                 </table>
             </div>
+            <?php if ($totalPages > 1): ?>
+            <div class="card-footer border-top py-2" style="border-color:var(--border)!important">
+                <?= render_pagination($page, $totalPages, $paginationBase) ?>
+            </div>
+            <?php endif; ?>
         </div>
     </div>
 </div>

@@ -11,9 +11,27 @@ if ($userId) {
     $stmt->execute([$userId]);
     $candidate = $stmt->fetch();
     if (!$candidate) { header('Location: /admin/proctor_images.php'); exit; }
-    $candidates = [$candidate];
+    $candidates  = [$candidate];
+    $totalPages  = 1;
+    $page        = 1;
+    $totalCandidates = 1;
+    $perPage     = 1;
+    $paginationBase  = '';
 } else {
-    $stmt = db()->query('
+    $perPage = 20;
+    $page    = max(1, (int) ($_GET['page'] ?? 1));
+    $offset  = ($page - 1) * $perPage;
+
+    $countStmt = db()->query('
+        SELECT COUNT(DISTINCT u.id)
+        FROM users u
+        JOIN proctor_images pi ON pi.user_id = u.id
+        JOIN qualifying_attempts qa ON qa.id = pi.attempt_id
+    ');
+    $totalCandidates = (int) $countStmt->fetchColumn();
+    $totalPages = (int) ceil($totalCandidates / $perPage);
+
+    $stmt = db()->prepare('
         SELECT DISTINCT u.id, u.name, u.email,
             COUNT(pi.id) AS image_count,
             MAX(pi.captured_at) AS last_capture,
@@ -24,8 +42,11 @@ if ($userId) {
         JOIN qualifying_attempts qa ON qa.id = pi.attempt_id
         GROUP BY u.id
         ORDER BY last_capture DESC
+        LIMIT ' . $perPage . ' OFFSET ' . $offset . '
     ');
+    $stmt->execute();
     $candidates = $stmt->fetchAll();
+    $paginationBase = '/admin/proctor_images.php?';
 }
 
 require_once __DIR__ . '/../includes/header.php';
@@ -90,6 +111,14 @@ require_once __DIR__ . '/../includes/header.php';
                 </table>
             </div>
         </div>
+        <?php if ($totalPages > 1): ?>
+        <div class="d-flex justify-content-between align-items-center mt-3">
+            <span class="text-muted small">
+                Showing <?= $offset + 1 ?>–<?= min($offset + $perPage, $totalCandidates) ?> of <?= $totalCandidates ?> candidates
+            </span>
+            <?= render_pagination($page, $totalPages, $paginationBase) ?>
+        </div>
+        <?php endif; ?>
         <?php endif; ?>
 
         <?php else: ?>

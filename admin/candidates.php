@@ -29,9 +29,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_status'])) {
     exit;
 }
 
-// Filter
-$statusFilter = $_GET['status'] ?? 'all';
-$candidates = get_candidates_for_review($statusFilter);
+// Filter + pagination
+$statusFilter  = $_GET['status'] ?? 'all';
+$perPage       = 12;
+$page          = max(1, (int) ($_GET['page'] ?? 1));
+$offset        = ($page - 1) * $perPage;
+$totalCandidates = count_candidates_for_review($statusFilter);
+$totalPages    = (int) ceil($totalCandidates / $perPage);
+$candidates    = get_candidates_for_review($statusFilter, $perPage, $offset);
+$paginationBase = '/admin/candidates.php?status=' . urlencode($statusFilter) . '&';
 
 // Stats
 $stats = [
@@ -325,6 +331,15 @@ require_once __DIR__ . '/../includes/header.php';
             </div>
             <?php endif; ?>
         </div>
+
+        <?php if ($totalPages > 1): ?>
+        <div class="d-flex justify-content-between align-items-center mt-3">
+            <span class="text-muted small">
+                Showing <?= $offset + 1 ?>–<?= min($offset + $perPage, $totalCandidates) ?> of <?= $totalCandidates ?> candidates
+            </span>
+            <?= render_pagination($page, $totalPages, $paginationBase) ?>
+        </div>
+        <?php endif; ?>
     </div>
 </div>
 
