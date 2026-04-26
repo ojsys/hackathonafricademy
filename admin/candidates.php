@@ -30,14 +30,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_status'])) {
 }
 
 // Filter + pagination
-$statusFilter  = $_GET['status'] ?? 'all';
-$perPage       = 12;
-$page          = max(1, (int) ($_GET['page'] ?? 1));
-$offset        = ($page - 1) * $perPage;
-$totalCandidates = count_candidates_for_review($statusFilter);
-$totalPages    = (int) ceil($totalCandidates / $perPage);
-$candidates    = get_candidates_for_review($statusFilter, $perPage, $offset);
-$paginationBase = '/admin/candidates.php?status=' . urlencode($statusFilter) . '&';
+$statusFilter = $_GET['status'] ?? 'all';
+$filters = [
+    'q'           => trim($_GET['q'] ?? ''),
+    'country'     => trim($_GET['country'] ?? ''),
+    'experience'  => $_GET['experience'] ?? '',
+    'min_score'   => $_GET['min_score'] ?? '',
+    'min_quiz'    => $_GET['min_quiz'] ?? '',
+    'sort'        => $_GET['sort'] ?? 'score_desc',
+    'has_github'  => !empty($_GET['has_github']) ? '1' : '',
+    'min_lessons' => $_GET['min_lessons'] ?? '',
+];
+$perPage         = 12;
+$page            = max(1, (int) ($_GET['page'] ?? 1));
+$offset          = ($page - 1) * $perPage;
+$totalCandidates = count_candidates_for_review($statusFilter, $filters);
+$totalPages      = (int) ceil($totalCandidates / $perPage);
+$candidates      = get_candidates_for_review($statusFilter, $perPage, $offset, $filters);
+
+$paginBaseParams = array_filter(array_merge(['status' => $statusFilter], $filters));
+$paginationBase  = '/admin/candidates.php?' . http_build_query($paginBaseParams) . '&';
 
 // Stats
 $stats = [
@@ -154,6 +166,78 @@ require_once __DIR__ . '/../includes/header.php';
                     </div>
                 </a>
             </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="card mb-4">
+            <div class="card-body p-3">
+                <form method="GET">
+                    <input type="hidden" name="status" value="<?= h($statusFilter) ?>">
+                    <div class="row g-2 mb-2">
+                        <div class="col-sm-6 col-md-3">
+                            <label class="form-label mb-1 small">Search</label>
+                            <input type="text" name="q" class="form-control form-control-sm" placeholder="Name or email" value="<?= h($filters['q']) ?>">
+                        </div>
+                        <div class="col-sm-6 col-md-2">
+                            <label class="form-label mb-1 small">Country</label>
+                            <input type="text" name="country" class="form-control form-control-sm" placeholder="e.g. Nigeria" value="<?= h($filters['country']) ?>">
+                        </div>
+                        <div class="col-sm-6 col-md-2">
+                            <label class="form-label mb-1 small">Experience</label>
+                            <select name="experience" class="form-select form-select-sm">
+                                <option value="">Any</option>
+                                <option value="none" <?= $filters['experience'] === 'none' ? 'selected' : '' ?>>Beginner</option>
+                                <option value="lt1"  <?= $filters['experience'] === 'lt1'  ? 'selected' : '' ?>>&lt; 1 year</option>
+                                <option value="1-2"  <?= $filters['experience'] === '1-2'  ? 'selected' : '' ?>>1–2 years</option>
+                                <option value="3-5"  <?= $filters['experience'] === '3-5'  ? 'selected' : '' ?>>3–5 years</option>
+                                <option value="5+"   <?= $filters['experience'] === '5+'   ? 'selected' : '' ?>>5+ years</option>
+                            </select>
+                        </div>
+                        <div class="col-sm-6 col-md-2">
+                            <label class="form-label mb-1 small">Sort by</label>
+                            <select name="sort" class="form-select form-select-sm">
+                                <option value="score_desc"   <?= $filters['sort'] === 'score_desc'   ? 'selected' : '' ?>>Top total score</option>
+                                <option value="quiz_desc"    <?= $filters['sort'] === 'quiz_desc'    ? 'selected' : '' ?>>Top quiz score</option>
+                                <option value="lessons_desc" <?= $filters['sort'] === 'lessons_desc' ? 'selected' : '' ?>>Most lessons done</option>
+                                <option value="joined_desc"  <?= $filters['sort'] === 'joined_desc'  ? 'selected' : '' ?>>Newest joined</option>
+                                <option value="joined_asc"   <?= $filters['sort'] === 'joined_asc'   ? 'selected' : '' ?>>Oldest joined</option>
+                                <option value="name_asc"     <?= $filters['sort'] === 'name_asc'     ? 'selected' : '' ?>>Name A–Z</option>
+                            </select>
+                        </div>
+                        <div class="col-sm-6 col-md-3">
+                            <label class="form-label mb-1 small">Min Lessons</label>
+                            <input type="number" name="min_lessons" class="form-control form-control-sm" placeholder="e.g. 5" min="0" value="<?= h($filters['min_lessons']) ?>">
+                        </div>
+                    </div>
+                    <div class="row g-2 align-items-end">
+                        <div class="col-sm-4 col-md-2">
+                            <label class="form-label mb-1 small">Min Total Score</label>
+                            <input type="number" name="min_score" class="form-control form-control-sm" placeholder="0–100" min="0" max="100" value="<?= h($filters['min_score']) ?>">
+                        </div>
+                        <div class="col-sm-4 col-md-2">
+                            <label class="form-label mb-1 small">Min Quiz Score</label>
+                            <input type="number" name="min_quiz" class="form-control form-control-sm" placeholder="0–100" min="0" max="100" value="<?= h($filters['min_quiz']) ?>">
+                        </div>
+                        <div class="col-auto d-flex align-items-end gap-2">
+                            <div class="form-check mb-0" style="padding-top:1.6rem">
+                                <input class="form-check-input" type="checkbox" name="has_github" id="has_github" value="1" <?= $filters['has_github'] ? 'checked' : '' ?>>
+                                <label class="form-check-label small" for="has_github">Has GitHub</label>
+                            </div>
+                        </div>
+                        <div class="col-auto" style="padding-top:1.6rem">
+                            <button class="btn btn-primary btn-sm">Apply</button>
+                            <a href="/admin/candidates.php?status=<?= h($statusFilter) ?>" class="btn btn-outline-secondary btn-sm ms-1">Clear</a>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Result summary -->
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <span class="text-muted small">
+                <?= $totalCandidates ?> candidate<?= $totalCandidates !== 1 ? 's' : '' ?> found
+            </span>
         </div>
 
         <!-- Candidates List -->

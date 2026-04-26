@@ -13,18 +13,23 @@ $stmt->execute([$examId]);
 $exam = $stmt->fetch();
 if (!$exam) { header('Location: /pages/courses.php'); exit; }
 
-// Must have completed the course
-if (!is_course_complete($user['id'], $exam['course_id'])) {
+$isAdminPreview = is_admin();
+
+// Must have completed the course (skip for admin preview)
+if (!$isAdminPreview && !is_course_complete($user['id'], $exam['course_id'])) {
     set_flash('warning', 'Complete all lessons and quizzes before taking the exam.');
     header('Location: /pages/course.php?id=' . $exam['course_id']);
     exit;
 }
 
-// Check if already passed
-$bestAttempt = get_best_exam_attempt($user['id'], $examId);
-if ($bestAttempt && $bestAttempt['passed']) {
-    header('Location: /pages/final_exam.php?course_id=' . $exam['course_id']);
-    exit;
+// Check if already passed (skip for admin preview)
+$bestAttempt = null;
+if (!$isAdminPreview) {
+    $bestAttempt = get_best_exam_attempt($user['id'], $examId);
+    if ($bestAttempt && $bestAttempt['passed']) {
+        header('Location: /pages/final_exam.php?course_id=' . $exam['course_id']);
+        exit;
+    }
 }
 
 $questions = get_final_exam_questions($examId);
@@ -76,6 +81,13 @@ require_once __DIR__ . '/../includes/header.php';
 .question-nav .q-dot:hover { border-color: var(--primary); }
 </style>
 
+<?php if ($isAdminPreview): ?>
+<div class="alert alert-warning rounded-0 border-0 border-bottom border-warning d-flex align-items-center gap-2 mb-0">
+    <i class="bi bi-eye-fill"></i>
+    <span><strong>Admin Preview</strong> — Timer is disabled. Submission will be recorded against your admin account.</span>
+</div>
+<?php endif; ?>
+
 <div class="exam-timer" data-testid="exam-timer">
     <div class="container d-flex align-items-center justify-content-between">
         <div>
@@ -87,9 +99,13 @@ require_once __DIR__ . '/../includes/header.php';
                 <span class="q-dot" data-q="<?= $i ?>" onclick="scrollToQuestion(<?= $i ?>)"><?= $i ?></span>
                 <?php endfor; ?>
             </div>
+            <?php if ($isAdminPreview): ?>
+            <div class="timer-display text-muted" data-testid="timer-display">Preview</div>
+            <?php else: ?>
             <div class="timer-display" data-testid="timer-display" id="examTimer">
                 <?= $exam['time_limit'] ?>:00
             </div>
+            <?php endif; ?>
         </div>
     </div>
 </div>
@@ -157,31 +173,35 @@ require_once __DIR__ . '/../includes/header.php';
 
 <script>
 // Timer
+const isAdminPreview = <?= $isAdminPreview ? 'true' : 'false' ?>;
 const timeLimitMinutes = <?= (int)$exam['time_limit'] ?>;
-let secondsLeft = timeLimitMinutes * 60;
-const timerEl = document.getElementById('examTimer');
 const timeTakenInput = document.getElementById('timeTaken');
 
-const timerInterval = setInterval(() => {
-    secondsLeft--;
-    const mins = Math.floor(secondsLeft / 60);
-    const secs = secondsLeft % 60;
-    timerEl.textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
-    timeTakenInput.value = (timeLimitMinutes * 60) - secondsLeft;
+if (!isAdminPreview) {
+    let secondsLeft = timeLimitMinutes * 60;
+    const timerEl = document.getElementById('examTimer');
 
-    if (secondsLeft <= 60) {
-        timerEl.classList.add('danger');
-        timerEl.classList.remove('warning');
-    } else if (secondsLeft <= 300) {
-        timerEl.classList.add('warning');
-    }
+    const timerInterval = setInterval(() => {
+        secondsLeft--;
+        const mins = Math.floor(secondsLeft / 60);
+        const secs = secondsLeft % 60;
+        timerEl.textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
+        timeTakenInput.value = (timeLimitMinutes * 60) - secondsLeft;
 
-    if (secondsLeft <= 0) {
-        clearInterval(timerInterval);
-        alert('Time is up! Your exam will be submitted automatically.');
-        document.getElementById('examForm').submit();
-    }
-}, 1000);
+        if (secondsLeft <= 60) {
+            timerEl.classList.add('danger');
+            timerEl.classList.remove('warning');
+        } else if (secondsLeft <= 300) {
+            timerEl.classList.add('warning');
+        }
+
+        if (secondsLeft <= 0) {
+            clearInterval(timerInterval);
+            alert('Time is up! Your exam will be submitted automatically.');
+            document.getElementById('examForm').submit();
+        }
+    }, 1000);
+}
 
 function scrollToQuestion(num) {
     document.getElementById('question-' + num).scrollIntoView({ behavior: 'smooth', block: 'center' });

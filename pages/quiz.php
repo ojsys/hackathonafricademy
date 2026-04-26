@@ -15,8 +15,9 @@ $stmt->execute([$quiz['module_id']]);
 $module = $stmt->fetch();
 if (!$module) { header('Location: /pages/courses.php'); exit; }
 
-$courseId = $module['course_id'];
-if (!is_enrolled($user['id'], $courseId)) {
+$courseId       = $module['course_id'];
+$isAdminPreview = is_admin();
+if (!is_enrolled($user['id'], $courseId) && !$isAdminPreview) {
     enroll_user($user['id'], $courseId);
 }
 
@@ -50,6 +51,13 @@ $course = get_course($courseId);
 </div>
 
 <div class="quiz-container">
+
+    <?php if ($isAdminPreview): ?>
+    <div class="alert alert-warning rounded-0 border-0 border-bottom border-warning d-flex align-items-center gap-2 mb-0" style="margin-top:-1px">
+        <i class="bi bi-eye-fill"></i>
+        <span><strong>Admin Preview</strong> — You are viewing this quiz as an admin. Submissions are recorded against your account and do not affect student data.</span>
+    </div>
+    <?php endif; ?>
 
     <?php render_flash(); ?>
 

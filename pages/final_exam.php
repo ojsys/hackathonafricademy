@@ -17,8 +17,10 @@ if (!$exam) {
     exit;
 }
 
-// Check if user has completed all course content first
-if (!is_course_complete($user['id'], $courseId)) {
+$isAdminPreview = is_admin();
+
+// Check if user has completed all course content first (skip for admin preview)
+if (!$isAdminPreview && !is_course_complete($user['id'], $courseId)) {
     set_flash('warning', 'You must complete all lessons and module quizzes before taking the final exam.');
     header('Location: /pages/course.php?id=' . $courseId);
     exit;
@@ -50,6 +52,12 @@ require_once __DIR__ . '/../includes/header.php';
 <div class="container py-5">
     <div class="row justify-content-center">
         <div class="col-lg-8">
+            <?php if ($isAdminPreview): ?>
+            <div class="alert alert-warning d-flex align-items-center gap-2 mb-4">
+                <i class="bi bi-eye-fill fs-5"></i>
+                <span><strong>Admin Preview</strong> — Course-completion requirement bypassed. The exam can be launched below.</span>
+            </div>
+            <?php endif; ?>
             <?php render_flash(); ?>
 
             <?php if ($bestAttempt && $bestAttempt['passed']): ?>

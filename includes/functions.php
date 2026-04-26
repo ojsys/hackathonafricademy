@@ -101,6 +101,11 @@ function require_admin(): void {
     }
 }
 
+function is_admin(): bool {
+    $user = current_user();
+    return $user !== null && in_array($user['role'], ['admin', 'superadmin']);
+}
+
 // ─── Flash messages ───────────────────────────────────────
 function set_flash(string $type, string $message): void {
     start_session();
@@ -630,45 +635,85 @@ function get_course_analytics(): array {
     return $analytics;
 }
 
-function get_candidates_for_review(string $status = 'all', int $limit = 0, int $offset = 0): array {
-    $sql = '
+function _candidates_build_where(string $status, array $filters): array {
+    $where  = ['u.role = "student"'];
+    $params = [];
+
+    if ($status !== 'all') {
+        $where[]  = 'cr.eligibility_status = ?';
+        $params[] = $status;
+    }
+
+    if (!empty($filters['q'])) {
+        $where[]  = '(u.name LIKE ? OR u.email LIKE ?)';
+        $params[] = '%' . $filters['q'] . '%';
+        $params[] = '%' . $filters['q'] . '%';
+    }
+    if (!empty($filters['country'])) {
+        $where[]  = 'u.country = ?';
+        $params[] = $filters['country'];
+    }
+    if (!empty($filters['experience'])) {
+        $where[]  = 'u.years_experience = ?';
+        $params[] = $filters['experience'];
+    }
+    if (isset($filters['min_score']) && $filters['min_score'] !== '') {
+        $where[]  = 'COALESCE(cr.total_score, 0) >= ?';
+        $params[] = (float) $filters['min_score'];
+    }
+    if (isset($filters['min_quiz']) && $filters['min_quiz'] !== '') {
+        $where[]  = 'COALESCE(cr.avg_quiz_score, 0) >= ?';
+        $params[] = (float) $filters['min_quiz'];
+    }
+    if (!empty($filters['has_github'])) {
+        $where[] = 'u.github_url IS NOT NULL AND u.github_url != ""';
+    }
+    if (!empty($filters['min_lessons'])) {
+        $where[]  = '(SELECT COUNT(*) FROM user_lesson_progress WHERE user_id = u.id) >= ?';
+        $params[] = (int) $filters['min_lessons'];
+    }
+
+    $sortMap = [
+        'score_desc'   => 'COALESCE(cr.total_score, 0) DESC, u.created_at DESC',
+        'score_asc'    => 'COALESCE(cr.total_score, 0) ASC, u.created_at DESC',
+        'quiz_desc'    => 'COALESCE(cr.avg_quiz_score, 0) DESC',
+        'lessons_desc' => 'lessons_completed DESC',
+        'joined_desc'  => 'u.created_at DESC',
+        'joined_asc'   => 'u.created_at ASC',
+        'name_asc'     => 'u.name ASC',
+    ];
+    $orderSql = $sortMap[$filters['sort'] ?? 'score_desc'] ?? 'COALESCE(cr.total_score, 0) DESC, u.created_at DESC';
+
+    return ['WHERE ' . implode(' AND ', $where), $params, $orderSql];
+}
+
+function get_candidates_for_review(string $status = 'all', int $limit = 0, int $offset = 0, array $filters = []): array {
+    [$whereSql, $params, $orderSql] = _candidates_build_where($status, $filters);
+
+    $sql = "
         SELECT u.*, cr.*,
                u.id as id,
                (SELECT COUNT(*) FROM user_enrollments WHERE user_id = u.id) as enrollment_count,
                (SELECT COUNT(*) FROM user_lesson_progress WHERE user_id = u.id) as lessons_completed
         FROM users u
         LEFT JOIN candidate_reviews cr ON cr.user_id = u.id
-        WHERE u.role = "student"
-    ';
-
-    if ($status !== 'all') {
-        $sql .= ' AND cr.eligibility_status = ?';
-    }
-
-    $sql .= ' ORDER BY cr.total_score DESC, u.created_at DESC';
+        $whereSql
+        ORDER BY $orderSql
+    ";
 
     if ($limit > 0) {
         $sql .= ' LIMIT ' . $limit . ' OFFSET ' . $offset;
     }
 
     $stmt = db()->prepare($sql);
-
-    if ($status !== 'all') {
-        $stmt->execute([$status]);
-    } else {
-        $stmt->execute();
-    }
-
+    $stmt->execute($params);
     return $stmt->fetchAll();
 }
 
-function count_candidates_for_review(string $status = 'all'): int {
-    if ($status !== 'all') {
-        $stmt = db()->prepare('SELECT COUNT(*) FROM users u LEFT JOIN candidate_reviews cr ON cr.user_id = u.id WHERE u.role = "student" AND cr.eligibility_status = ?');
-        $stmt->execute([$status]);
-    } else {
-        $stmt = db()->query('SELECT COUNT(*) FROM users WHERE role = "student"');
-    }
+function count_candidates_for_review(string $status = 'all', array $filters = []): int {
+    [$whereSql, $params] = _candidates_build_where($status, $filters);
+    $stmt = db()->prepare("SELECT COUNT(*) FROM users u LEFT JOIN candidate_reviews cr ON cr.user_id = u.id $whereSql");
+    $stmt->execute($params);
     return (int) $stmt->fetchColumn();
 }
 

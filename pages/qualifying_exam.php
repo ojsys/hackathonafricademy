@@ -4,11 +4,12 @@ require_once __DIR__ . '/../includes/functions.php';
 require_login();
 $user = current_user();
 
-$exam = get_qualifying_exam();
-$eligible = is_eligible($user['id']);
-$bestAttempt = get_best_qualifying_attempt($user['id']);
-$activeAttempt = get_active_qualifying_attempt($user['id']);
-$passed = has_passed_qualifying_exam($user['id']);
+$exam           = get_qualifying_exam();
+$eligible       = is_eligible($user['id']);
+$bestAttempt    = get_best_qualifying_attempt($user['id']);
+$activeAttempt  = get_active_qualifying_attempt($user['id']);
+$passed         = has_passed_qualifying_exam($user['id']);
+$isAdminPreview = is_admin();
 
 require_once __DIR__ . '/../includes/header.php';
 ?>
@@ -39,7 +40,7 @@ require_once __DIR__ . '/../includes/header.php';
         </div>
     </div>
 
-    <?php elseif (!$eligible): ?>
+    <?php elseif (!$eligible && !$isAdminPreview): ?>
     <div class="row justify-content-center">
         <div class="col-lg-7">
             <div class="card p-4">
@@ -62,6 +63,12 @@ require_once __DIR__ . '/../includes/header.php';
     </div>
 
     <?php else: ?>
+    <?php if ($isAdminPreview && !$eligible): ?>
+    <div class="alert alert-warning d-flex align-items-center gap-2 mb-4">
+        <i class="bi bi-eye-fill fs-5"></i>
+        <span><strong>Admin Preview</strong> — Eligibility requirement bypassed. Use "Preview Questions" to inspect the exam without creating an attempt.</span>
+    </div>
+    <?php endif; ?>
     <div class="row justify-content-center g-4">
         <div class="col-lg-7">
             <div class="card">
@@ -112,7 +119,19 @@ require_once __DIR__ . '/../includes/header.php';
                     </div>
                     <?php endif; ?>
 
-                    <?php if ($activeAttempt): ?>
+                    <?php if ($isAdminPreview): ?>
+                    <a href="/pages/qualifying_take.php?preview=1" class="btn btn-warning btn-lg w-100 mb-2">
+                        <i class="bi bi-eye me-2"></i>Preview Questions (no attempt created)
+                    </a>
+                    <form method="POST" action="/actions/start_qualifying_exam.php" class="mt-2">
+                        <?= csrf_field() ?>
+                        <input type="hidden" name="exam_id" value="<?= $exam['id'] ?>">
+                        <button type="submit" class="btn btn-outline-primary w-100"
+                            onclick="return confirm('Start a real attempt as your admin account?')">
+                            <i class="bi bi-play-circle me-2"></i>Start Real Attempt (admin account)
+                        </button>
+                    </form>
+                    <?php elseif ($activeAttempt): ?>
                     <div class="alert alert-warning mb-4">
                         <i class="bi bi-exclamation-triangle me-1"></i>You have an unfinished attempt. Resuming it now.
                     </div>

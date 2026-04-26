@@ -30,28 +30,67 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['change_role'])) {
 }
 
 // Search/filter
-$search = trim($_GET['q'] ?? '');
-$role   = $_GET['role'] ?? '';
+$search      = trim($_GET['q'] ?? '');
+$role        = $_GET['role'] ?? '';
+$statusFilt  = $_GET['status'] ?? '';
+$eligible    = $_GET['eligible'] ?? '';
+$experience  = $_GET['experience'] ?? '';
+$country     = trim($_GET['country'] ?? '');
+$minLessons  = $_GET['min_lessons'] ?? '';
+$sort        = $_GET['sort'] ?? 'newest';
+
 $params = [];
 $where  = [];
 
 if ($search) {
-    $where[] = '(u.name LIKE ? OR u.email LIKE ?)';
+    $where[]  = '(u.name LIKE ? OR u.email LIKE ?)';
     $params[] = "%$search%";
     $params[] = "%$search%";
 }
 if ($role && in_array($role, ['student', 'admin'])) {
-    $where[] = 'u.role = ?';
+    $where[]  = 'u.role = ?';
     $params[] = $role;
+}
+if ($statusFilt === 'active') {
+    $where[] = 'u.is_active = 1';
+} elseif ($statusFilt === 'inactive') {
+    $where[] = 'u.is_active = 0';
+}
+if ($eligible === 'yes') {
+    $where[] = 'cr.eligibility_status = "eligible"';
+} elseif ($eligible === 'no') {
+    $where[] = '(cr.eligibility_status IS NULL OR cr.eligibility_status != "eligible")';
+}
+if ($experience && in_array($experience, ['none','lt1','1-2','3-5','5+'])) {
+    $where[]  = 'u.years_experience = ?';
+    $params[] = $experience;
+}
+if ($country) {
+    $where[]  = 'u.country LIKE ?';
+    $params[] = "%$country%";
+}
+if ($minLessons !== '' && is_numeric($minLessons)) {
+    $where[]  = '(SELECT COUNT(*) FROM user_lesson_progress WHERE user_id = u.id) >= ?';
+    $params[] = (int) $minLessons;
 }
 
 $whereSql = $where ? 'WHERE ' . implode(' AND ', $where) : '';
+
+$sortMap = [
+    'newest'       => 'u.created_at DESC',
+    'oldest'       => 'u.created_at ASC',
+    'lessons_desc' => 'lessons_done DESC',
+    'score_desc'   => 'COALESCE(cr.total_score, 0) DESC',
+    'quiz_desc'    => 'COALESCE(cr.avg_quiz_score, 0) DESC',
+    'name_asc'     => 'u.name ASC',
+];
+$orderSql = $sortMap[$sort] ?? 'u.created_at DESC';
 
 $perPage = 25;
 $page    = max(1, (int) ($_GET['page'] ?? 1));
 $offset  = ($page - 1) * $perPage;
 
-$countStmt = db()->prepare("SELECT COUNT(*) FROM users u $whereSql");
+$countStmt = db()->prepare("SELECT COUNT(*) FROM users u LEFT JOIN candidate_reviews cr ON cr.user_id = u.id $whereSql");
 $countStmt->execute($params);
 $totalUsers = (int) $countStmt->fetchColumn();
 $totalPages = (int) ceil($totalUsers / $perPage);
@@ -59,17 +98,30 @@ $totalPages = (int) ceil($totalUsers / $perPage);
 $stmt = db()->prepare("
     SELECT u.*,
         (SELECT COUNT(*) FROM user_enrollments WHERE user_id = u.id) AS enrollments,
-        (SELECT COUNT(*) FROM user_lesson_progress WHERE user_id = u.id) AS lessons_done
+        (SELECT COUNT(*) FROM user_lesson_progress WHERE user_id = u.id) AS lessons_done,
+        cr.total_score,
+        cr.avg_quiz_score,
+        cr.courses_completed
     FROM users u
+    LEFT JOIN candidate_reviews cr ON cr.user_id = u.id
     $whereSql
-    ORDER BY u.created_at DESC
+    ORDER BY $orderSql
     LIMIT $perPage OFFSET $offset
 ");
 $stmt->execute($params);
 $users = $stmt->fetchAll();
 
-$baseQueryParams = array_filter(['q' => $search, 'role' => $role]);
-$paginationBase  = '/admin/users.php?' . ($baseQueryParams ? http_build_query($baseQueryParams) . '&' : '');
+$baseQueryParams = array_filter([
+    'q'           => $search,
+    'role'        => $role,
+    'status'      => $statusFilt,
+    'eligible'    => $eligible,
+    'experience'  => $experience,
+    'country'     => $country,
+    'min_lessons' => $minLessons,
+    'sort'        => $sort !== 'newest' ? $sort : '',
+]);
+$paginationBase = '/admin/users.php?' . ($baseQueryParams ? http_build_query($baseQueryParams) . '&' : '');
 
 require_once __DIR__ . '/../includes/header.php';
 ?>
@@ -88,21 +140,73 @@ require_once __DIR__ . '/../includes/header.php';
         <!-- Filters -->
         <div class="card mb-4">
             <div class="card-body p-3">
-                <form method="GET" class="d-flex gap-2 flex-wrap align-items-end">
-                    <div>
-                        <label class="form-label mb-1 small">Search</label>
-                        <input type="text" name="q" class="form-control form-control-sm" placeholder="Name or email" value="<?= h($search) ?>">
+                <form method="GET">
+                    <div class="row g-2 mb-2">
+                        <div class="col-sm-4 col-md-3">
+                            <label class="form-label mb-1 small">Search</label>
+                            <input type="text" name="q" class="form-control form-control-sm" placeholder="Name or email" value="<?= h($search) ?>">
+                        </div>
+                        <div class="col-sm-4 col-md-2">
+                            <label class="form-label mb-1 small">Role</label>
+                            <select name="role" class="form-select form-select-sm">
+                                <option value="">All roles</option>
+                                <option value="student" <?= $role === 'student' ? 'selected' : '' ?>>Students</option>
+                                <option value="admin"   <?= $role === 'admin'   ? 'selected' : '' ?>>Admins</option>
+                            </select>
+                        </div>
+                        <div class="col-sm-4 col-md-2">
+                            <label class="form-label mb-1 small">Account Status</label>
+                            <select name="status" class="form-select form-select-sm">
+                                <option value="">All</option>
+                                <option value="active"   <?= $statusFilt === 'active'   ? 'selected' : '' ?>>Active</option>
+                                <option value="inactive" <?= $statusFilt === 'inactive' ? 'selected' : '' ?>>Inactive</option>
+                            </select>
+                        </div>
+                        <div class="col-sm-4 col-md-2">
+                            <label class="form-label mb-1 small">Eligible</label>
+                            <select name="eligible" class="form-select form-select-sm">
+                                <option value="">All</option>
+                                <option value="yes" <?= $eligible === 'yes' ? 'selected' : '' ?>>Eligible only</option>
+                                <option value="no"  <?= $eligible === 'no'  ? 'selected' : '' ?>>Not eligible</option>
+                            </select>
+                        </div>
+                        <div class="col-sm-4 col-md-3">
+                            <label class="form-label mb-1 small">Sort by</label>
+                            <select name="sort" class="form-select form-select-sm">
+                                <option value="newest"       <?= $sort === 'newest'       ? 'selected' : '' ?>>Newest joined</option>
+                                <option value="oldest"       <?= $sort === 'oldest'       ? 'selected' : '' ?>>Oldest joined</option>
+                                <option value="lessons_desc" <?= $sort === 'lessons_desc' ? 'selected' : '' ?>>Top learners (lessons)</option>
+                                <option value="score_desc"   <?= $sort === 'score_desc'   ? 'selected' : '' ?>>Top score</option>
+                                <option value="quiz_desc"    <?= $sort === 'quiz_desc'    ? 'selected' : '' ?>>Top quiz score</option>
+                                <option value="name_asc"     <?= $sort === 'name_asc'     ? 'selected' : '' ?>>Name A–Z</option>
+                            </select>
+                        </div>
                     </div>
-                    <div>
-                        <label class="form-label mb-1 small">Role</label>
-                        <select name="role" class="form-select form-select-sm">
-                            <option value="">All roles</option>
-                            <option value="student" <?= $role === 'student' ? 'selected' : '' ?>>Students</option>
-                            <option value="admin" <?= $role === 'admin' ? 'selected' : '' ?>>Admins</option>
-                        </select>
+                    <div class="row g-2 align-items-end">
+                        <div class="col-sm-4 col-md-2">
+                            <label class="form-label mb-1 small">Experience</label>
+                            <select name="experience" class="form-select form-select-sm">
+                                <option value="">Any</option>
+                                <option value="none" <?= $experience === 'none' ? 'selected' : '' ?>>Beginner (none)</option>
+                                <option value="lt1"  <?= $experience === 'lt1'  ? 'selected' : '' ?>>< 1 year</option>
+                                <option value="1-2"  <?= $experience === '1-2'  ? 'selected' : '' ?>>1–2 years</option>
+                                <option value="3-5"  <?= $experience === '3-5'  ? 'selected' : '' ?>>3–5 years</option>
+                                <option value="5+"   <?= $experience === '5+'   ? 'selected' : '' ?>>5+ years</option>
+                            </select>
+                        </div>
+                        <div class="col-sm-4 col-md-2">
+                            <label class="form-label mb-1 small">Country</label>
+                            <input type="text" name="country" class="form-control form-control-sm" placeholder="e.g. Nigeria" value="<?= h($country) ?>">
+                        </div>
+                        <div class="col-sm-4 col-md-2">
+                            <label class="form-label mb-1 small">Min Lessons</label>
+                            <input type="number" name="min_lessons" class="form-control form-control-sm" placeholder="e.g. 5" min="0" value="<?= h($minLessons) ?>">
+                        </div>
+                        <div class="col-auto">
+                            <button class="btn btn-primary btn-sm">Apply</button>
+                            <a href="/admin/users.php" class="btn btn-outline-secondary btn-sm ms-1">Clear</a>
+                        </div>
                     </div>
-                    <button class="btn btn-primary btn-sm">Filter</button>
-                    <a href="/admin/users.php" class="btn btn-outline-secondary btn-sm">Clear</a>
                 </form>
             </div>
         </div>
@@ -118,6 +222,7 @@ require_once __DIR__ . '/../includes/header.php';
                             <th>Experience</th>
                             <th>Role</th>
                             <th>Lessons</th>
+                            <th>Score</th>
                             <th>Eligible</th>
                             <th>Status</th>
                             <th>Joined</th>
@@ -168,6 +273,16 @@ require_once __DIR__ . '/../includes/header.php';
                                 </span>
                             </td>
                             <td class="small"><?= $u['lessons_done'] ?></td>
+                            <td class="small">
+                                <?php if ($u['total_score'] !== null): ?>
+                                <span class="fw-600"><?= round($u['total_score']) ?>%</span>
+                                <?php if ($u['avg_quiz_score'] !== null): ?>
+                                <div class="text-muted" style="font-size:.7rem">quiz <?= round($u['avg_quiz_score']) ?>%</div>
+                                <?php endif; ?>
+                                <?php else: ?>
+                                <span class="text-muted">—</span>
+                                <?php endif; ?>
+                            </td>
                             <td>
                                 <?php if ($eligible): ?>
                                 <span class="text-success fw-600 small"><i class="bi bi-check-circle-fill me-1"></i>Yes</span>
@@ -218,7 +333,7 @@ require_once __DIR__ . '/../includes/header.php';
                         </tr>
                         <!-- Expandable detail row -->
                         <tr class="collapse" id="detail-<?= $u['id'] ?>">
-                            <td colspan="10" class="bg-light p-3">
+                            <td colspan="11" class="bg-light p-3">
                                 <div class="row g-3 small">
                                     <div class="col-md-4">
                                         <strong>Education:</strong> <?= h($u['education_level'] ?? '—') ?><br>
@@ -234,7 +349,7 @@ require_once __DIR__ . '/../includes/header.php';
                         </tr>
                         <?php endforeach; ?>
                         <?php if (empty($users)): ?>
-                        <tr><td colspan="10" class="text-center text-muted py-4">No users found.</td></tr>
+                        <tr><td colspan="11" class="text-center text-muted py-4">No users found.</td></tr>
                         <?php endif; ?>
                     </tbody>
                 </table>

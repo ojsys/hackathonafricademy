@@ -4,50 +4,64 @@ require_once __DIR__ . '/../includes/functions.php';
 require_login();
 $user = current_user();
 
-// Must have an active attempt
-$attempt = get_active_qualifying_attempt($user['id']);
-if (!$attempt) {
-    header('Location: /pages/qualifying_exam.php');
-    exit;
+$isAdminPreview = is_admin() && isset($_GET['preview']);
+
+if ($isAdminPreview) {
+    // Preview mode: load exam and questions directly, no attempt needed
+    $exam = get_qualifying_exam();
+    if (!$exam) { header('Location: /pages/qualifying_exam.php'); exit; }
+    $questions      = get_qualifying_questions($exam['id']);
+    $attempt        = null;
+    $elapsed        = 0;
+    $remaining      = 0;
+    $proctorSession = null;
+    $csrfToken      = csrf_token();
+} else {
+    // Normal mode: require an active attempt
+    $attempt = get_active_qualifying_attempt($user['id']);
+    if (!$attempt) {
+        header('Location: /pages/qualifying_exam.php');
+        exit;
+    }
+
+    $examStmt = db()->prepare('SELECT * FROM qualifying_exam WHERE id = ?');
+    $examStmt->execute([$attempt['exam_id']]);
+    $exam = $examStmt->fetch();
+    if (!$exam) { header('Location: /pages/qualifying_exam.php'); exit; }
+
+    // Load questions — shuffle once and store order in session
+    start_session();
+    $sessionKey = 'q_order_' . $attempt['id'];
+    if (empty($_SESSION[$sessionKey])) {
+        $all = get_qualifying_questions($exam['id']);
+        $ids = array_column($all, 'id');
+        shuffle($ids);
+        $_SESSION[$sessionKey] = $ids;
+    }
+    $orderedIds = $_SESSION[$sessionKey];
+
+    // Fetch questions in shuffled order
+    $placeholders = implode(',', array_fill(0, count($orderedIds), '?'));
+    $stmt = db()->prepare("SELECT * FROM qualifying_questions WHERE id IN ($placeholders)");
+    $stmt->execute($orderedIds);
+    $byId = [];
+    foreach ($stmt->fetchAll() as $q) { $byId[$q['id']] = $q; }
+    $questions = array_map(fn($id) => $byId[$id], array_filter($orderedIds, fn($id) => isset($byId[$id])));
+
+    // Time remaining (server-side calculation prevents cheating via refresh)
+    $elapsed   = time() - strtotime($attempt['started_at']);
+    $totalSec  = $exam['time_limit'] * 60;
+    $remaining = max(0, $totalSec - $elapsed);
+
+    // Auto-submit if time already expired
+    if ($remaining <= 0) {
+        header('Location: /actions/submit_qualifying_exam.php?auto=1&attempt_id=' . $attempt['id']);
+        exit;
+    }
+
+    $proctorSession = get_proctor_session($attempt['id']);
+    $csrfToken      = csrf_token();
 }
-
-$exam = db()->prepare('SELECT * FROM qualifying_exam WHERE id = ?');
-$exam->execute([$attempt['exam_id']]);
-$exam = $exam->fetch();
-if (!$exam) { header('Location: /pages/qualifying_exam.php'); exit; }
-
-// Load questions — shuffle once and store order in session
-start_session();
-$sessionKey = 'q_order_' . $attempt['id'];
-if (empty($_SESSION[$sessionKey])) {
-    $all = get_qualifying_questions($exam['id']);
-    $ids = array_column($all, 'id');
-    shuffle($ids);
-    $_SESSION[$sessionKey] = $ids;
-}
-$orderedIds = $_SESSION[$sessionKey];
-
-// Fetch questions in shuffled order
-$placeholders = implode(',', array_fill(0, count($orderedIds), '?'));
-$stmt = db()->prepare("SELECT * FROM qualifying_questions WHERE id IN ($placeholders)");
-$stmt->execute($orderedIds);
-$byId = [];
-foreach ($stmt->fetchAll() as $q) { $byId[$q['id']] = $q; }
-$questions = array_map(fn($id) => $byId[$id], array_filter($orderedIds, fn($id) => isset($byId[$id])));
-
-// Time remaining (server-side calculation prevents cheating via refresh)
-$elapsed  = time() - strtotime($attempt['started_at']);
-$totalSec = $exam['time_limit'] * 60;
-$remaining = max(0, $totalSec - $elapsed);
-
-// Auto-submit if time already expired
-if ($remaining <= 0) {
-    header('Location: /actions/submit_qualifying_exam.php?auto=1&attempt_id=' . $attempt['id']);
-    exit;
-}
-
-$proctorSession = get_proctor_session($attempt['id']);
-$csrfToken = csrf_token();
 
 require_once __DIR__ . '/../includes/header.php';
 ?>
@@ -137,6 +151,14 @@ require_once __DIR__ . '/../includes/header.php';
 .exam-option input[type="radio"]:checked ~ span { color: var(--primary); font-weight: 600; }
 </style>
 
+<?php if ($isAdminPreview): ?>
+<div class="alert alert-warning rounded-0 border-0 border-bottom border-warning d-flex align-items-center gap-2 mb-0">
+    <i class="bi bi-eye-fill"></i>
+    <span><strong>Admin Preview</strong> — Read-only view. Timer and proctoring are disabled. No attempt is recorded.</span>
+    <a href="/pages/qualifying_exam.php" class="btn btn-sm btn-outline-warning ms-auto">Exit Preview</a>
+</div>
+<?php endif; ?>
+
 <div class="exam-header" id="exam-header">
     <div class="container-fluid px-4 d-flex align-items-center justify-content-between gap-3">
         <div class="fw-700 d-none d-md-block"><?= h($exam['title']) ?></div>
@@ -146,19 +168,26 @@ require_once __DIR__ . '/../includes/header.php';
             <?php endforeach; ?>
         </div>
         <div class="d-flex align-items-center gap-3">
+            <?php if ($isAdminPreview): ?>
+            <div class="timer-display text-muted">Preview</div>
+            <a href="/pages/qualifying_exam.php" class="btn btn-outline-secondary btn-sm">Exit</a>
+            <?php else: ?>
             <div id="timer" class="timer-display"><?= floor($remaining/60) ?>:<?= str_pad($remaining%60,2,'0',STR_PAD_LEFT) ?></div>
             <button form="exam-form" type="submit" class="btn btn-primary btn-sm" id="submit-btn">
                 <i class="bi bi-send me-1"></i>Submit
             </button>
+            <?php endif; ?>
         </div>
     </div>
 </div>
 
 <div class="container py-4" style="max-width:820px">
+    <?php if (!$isAdminPreview): ?>
     <form id="exam-form" action="/actions/submit_qualifying_exam.php" method="POST">
         <?= csrf_field() ?>
         <input type="hidden" name="attempt_id" value="<?= $attempt['id'] ?>">
         <input type="hidden" name="time_taken" id="time-taken" value="<?= $elapsed ?>">
+    <?php endif; ?>
 
         <?php foreach ($questions as $i => $q): $num = $i + 1; ?>
         <?php $options = json_decode($q['options_json'], true) ?? []; ?>
@@ -173,8 +202,8 @@ require_once __DIR__ . '/../includes/header.php';
             </div>
             <p class="fw-600 mb-3" style="font-size:1.05rem"><?= nl2br(h($q['question_text'])) ?></p>
             <?php foreach ($options as $idx => $opt): ?>
-            <label class="exam-option" onclick="markAnswered(<?= $num ?>)">
-                <input type="radio" name="answer_<?= $q['id'] ?>" value="<?= $idx ?>">
+            <label class="exam-option" <?= !$isAdminPreview ? 'onclick="markAnswered(' . $num . ')"' : '' ?>>
+                <input type="radio" name="answer_<?= $q['id'] ?>" value="<?= $idx ?>" <?= $isAdminPreview ? 'disabled' : '' ?>>
                 <span><?= h($opt) ?></span>
             </label>
             <?php endforeach; ?>
@@ -183,16 +212,22 @@ require_once __DIR__ . '/../includes/header.php';
 
         <div class="d-flex justify-content-between align-items-center mt-4 mb-5 pb-5">
             <a href="/pages/qualifying_exam.php" class="btn btn-outline-secondary">
-                <i class="bi bi-x-lg me-1"></i>Cancel
+                <i class="bi bi-<?= $isAdminPreview ? 'arrow-left' : 'x-lg' ?> me-1"></i><?= $isAdminPreview ? 'Back to Exam' : 'Cancel' ?>
             </a>
+            <?php if (!$isAdminPreview): ?>
             <button type="submit" class="btn btn-primary btn-lg" id="submit-btn-bottom">
                 <i class="bi bi-send me-1"></i>Submit Exam
             </button>
+            <?php endif; ?>
         </div>
+
+    <?php if (!$isAdminPreview): ?>
     </form>
+    <?php endif; ?>
 </div>
 
-<!-- Proctor camera widget -->
+<!-- Proctor camera widget (hidden in preview mode) -->
+<?php if (!$isAdminPreview): ?>
 <div class="proctor-widget" id="proctor-widget">
     <video id="proctor-video" autoplay muted playsinline></video>
     <canvas id="capture-canvas" style="display:none" width="320" height="240"></canvas>
@@ -200,10 +235,23 @@ require_once __DIR__ . '/../includes/header.php';
         <span class="text-muted"><i class="bi bi-camera-video me-1"></i>Connecting…</span>
     </div>
 </div>
+<?php endif; ?>
 
 <script>
 (function () {
-    // ── Timer ──────────────────────────────────────────────────
+    const isAdminPreview = <?= $isAdminPreview ? 'true' : 'false' ?>;
+
+    // ── Question nav (always active) ──────────────────────────
+    window.scrollToQ = function(num) {
+        document.getElementById('q-' + num)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
+    window.markAnswered = function(num) {
+        document.getElementById('dot-' + num)?.classList.add('answered');
+    };
+
+    if (isAdminPreview) return; // skip timer and proctoring in preview mode
+
+    // ── Timer ─────────────────────────────────────────────────
     let secondsLeft = <?= (int)$remaining ?>;
     const timerEl   = document.getElementById('timer');
     const takenEl   = document.getElementById('time-taken');
@@ -226,16 +274,8 @@ require_once __DIR__ . '/../includes/header.php';
         }
     }, 1000);
 
-    // ── Question nav ──────────────────────────────────────────
-    window.scrollToQ = function(num) {
-        document.getElementById('q-' + num)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    };
-    window.markAnswered = function(num) {
-        document.getElementById('dot-' + num)?.classList.add('answered');
-    };
-
     // ── Proctoring ────────────────────────────────────────────
-    const ATTEMPT_ID  = <?= (int)$attempt['id'] ?>;
+    const ATTEMPT_ID  = <?= (int)($attempt['id'] ?? 0) ?>;
     const CSRF_TOKEN  = <?= json_encode($csrfToken) ?>;
     const SESSION_ID  = <?= (int)($proctorSession['id'] ?? 0) ?>;
     const video       = document.getElementById('proctor-video');
@@ -253,14 +293,12 @@ require_once __DIR__ . '/../includes/header.php';
             video.srcObject = videoStream;
             statusEl.innerHTML = '<span class="rec-dot"></span><span class="text-danger fw-600" style="font-size:.7rem">LIVE</span>';
 
-            // Mark camera as granted in DB
             fetch('/actions/save_proctor_image.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ action: 'camera_granted', attempt_id: ATTEMPT_ID, session_id: SESSION_ID, csrf_token: CSRF_TOKEN })
             }).catch(() => {});
 
-            // First capture after 30s
             captureTimer = setTimeout(captureAndSchedule, 30000);
         } catch (err) {
             statusEl.innerHTML = '<span class="text-warning" style="font-size:.7rem"><i class="bi bi-camera-video-off me-1"></i>Camera unavailable</span>';
@@ -276,16 +314,9 @@ require_once __DIR__ . '/../includes/header.php';
         fetch('/actions/save_proctor_image.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                action: 'capture',
-                image: dataUrl,
-                attempt_id: ATTEMPT_ID,
-                session_id: SESSION_ID,
-                csrf_token: CSRF_TOKEN
-            })
+            body: JSON.stringify({ action: 'capture', image: dataUrl, attempt_id: ATTEMPT_ID, session_id: SESSION_ID, csrf_token: CSRF_TOKEN })
         }).catch(() => {});
 
-        // Next capture: random 45–90 seconds
         const delay = (45 + Math.random() * 45) * 1000;
         captureTimer = setTimeout(captureAndSchedule, delay);
     }
@@ -295,7 +326,6 @@ require_once __DIR__ . '/../includes/header.php';
         if (videoStream) videoStream.getTracks().forEach(t => t.stop());
     }
 
-    // Stop camera on form submit
     document.getElementById('exam-form').addEventListener('submit', function (e) {
         const unanswered = <?= count($questions) ?> - document.querySelectorAll('.q-dot.answered').length;
         if (unanswered > 0) {
@@ -305,8 +335,6 @@ require_once __DIR__ . '/../includes/header.php';
             }
         }
         stopCamera();
-
-        // Disable submit buttons to prevent double-submit
         document.getElementById('submit-btn').disabled = true;
         document.getElementById('submit-btn-bottom').disabled = true;
     });
