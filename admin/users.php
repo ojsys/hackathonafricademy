@@ -303,6 +303,9 @@ require_once __DIR__ . '/../includes/header.php';
                                         data-bs-target="#detail-<?= $u['id'] ?>">
                                     <i class="bi bi-person-lines-fill"></i>
                                 </button>
+                                <a href="/admin/edit_user.php?id=<?= $u['id'] ?>" class="btn btn-sm btn-outline-primary mb-1" title="Edit user">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
                                 <?php if ($u['id'] !== current_user()['id']): ?>
                                 <div class="d-flex gap-1 flex-wrap">
                                     <form method="POST" class="d-inline">
