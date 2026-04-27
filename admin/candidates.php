@@ -320,7 +320,7 @@ require_once __DIR__ . '/../includes/header.php';
                         <?php endif; ?>
                         <span class="badge bg-secondary">
                             <i class="bi bi-calendar me-1"></i>
-                            Joined <?= date('M j, Y', strtotime($candidate['created_at'])) ?>
+                            Joined <?= date('M j, Y', strtotime($candidate['joined_at'])) ?>
                         </span>
                     </div>
 
