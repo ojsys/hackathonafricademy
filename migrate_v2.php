@@ -32,6 +32,7 @@ function runv2(string $label, string $sql): void {
 
 // Add video_path column to lessons
 runv2('lessons: add video_path', "ALTER TABLE lessons ADD COLUMN video_path TEXT DEFAULT NULL");
+runv2('users: add gender', "ALTER TABLE users ADD COLUMN gender VARCHAR(20) DEFAULT NULL");
 
 // Create upload directory
 $uploadDir = __DIR__ . '/public/videos/lessons';

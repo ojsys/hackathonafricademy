@@ -98,6 +98,18 @@ require_once __DIR__ . '/../includes/header.php';
                                value="<?= h($_POST['city'] ?? '') ?>" required>
                     </div>
                     <div class="col-md-6">
+                        <label class="form-label" for="gender">Gender</label>
+                        <select class="form-select" id="gender" name="gender">
+                            <option value="">Prefer not to say</option>
+                            <option value="male"   <?= ($_POST['gender'] ?? '') === 'male'   ? 'selected' : '' ?>>Male</option>
+                            <option value="female" <?= ($_POST['gender'] ?? '') === 'female' ? 'selected' : '' ?>>Female</option>
+                            <option value="other"  <?= ($_POST['gender'] ?? '') === 'other'  ? 'selected' : '' ?>>Other</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="row g-3 mb-4">
+                    <div class="col-md-6">
                         <label class="form-label" for="how_heard">How did you hear about us? <span class="text-danger">*</span></label>
                         <select class="form-select" id="how_heard" name="how_heard" required>
                             <option value="">Select…</option>

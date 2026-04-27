@@ -90,16 +90,18 @@ try {
     $skillLevel = trim($_POST['skill_level'] ?? 'beginner');
     if (!in_array($skillLevel, ['beginner', 'intermediate', 'advanced'])) $skillLevel = 'beginner';
 
+    $gender = in_array($_POST['gender'] ?? '', ['male','female','other']) ? $_POST['gender'] : null;
+
     $stmt = db()->prepare('
         INSERT INTO users
             (name, email, password, role, phone, country, city, education_level,
-             years_experience, github_url, linkedin_url, bio, how_heard, skill_level)
-        VALUES (?, ?, ?, "student", ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             years_experience, github_url, linkedin_url, bio, how_heard, skill_level, gender)
+        VALUES (?, ?, ?, "student", ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ');
     $stmt->execute([
         $name, $email, $hash,
         $phone, $country, $city, $educationLevel,
-        $yearsExp, $githubUrl ?: null, $linkedinUrl ?: null, $bio, $howHeard, $skillLevel,
+        $yearsExp, $githubUrl ?: null, $linkedinUrl ?: null, $bio, $howHeard, $skillLevel, $gender,
     ]);
     $userId = db()->lastInsertId();
 

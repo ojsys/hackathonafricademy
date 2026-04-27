@@ -338,6 +338,7 @@ require_once __DIR__ . '/../includes/header.php';
                                     <div class="col-md-4">
                                         <strong>Education:</strong> <?= h($u['education_level'] ?? '—') ?><br>
                                         <strong>Experience:</strong> <?= h($u['years_experience'] ?? '—') ?><br>
+                                        <strong>Gender:</strong> <?= $u['gender'] ? ucfirst(h($u['gender'])) : '—' ?><br>
                                         <strong>Source:</strong> <?= h($u['how_heard'] ?? '—') ?>
                                     </div>
                                     <div class="col-md-8">

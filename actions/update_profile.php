@@ -67,15 +67,17 @@ if ($section === 'account') {
         exit;
     }
 
+    $gender = in_array($_POST['gender'] ?? '', ['male','female','other']) ? $_POST['gender'] : null;
+
     $stmt = db()->prepare('
         UPDATE users SET
             country = ?, city = ?, education_level = ?, years_experience = ?,
-            github_url = ?, linkedin_url = ?, bio = ?, how_heard = ?
+            github_url = ?, linkedin_url = ?, bio = ?, how_heard = ?, gender = ?
         WHERE id = ?
     ');
     $stmt->execute([
         $country ?: null, $city ?: null, $educationLevel ?: null, $yearsExp ?: null,
-        $githubUrl ?: null, $linkedinUrl ?: null, $bio ?: null, $howHeard ?: null,
+        $githubUrl ?: null, $linkedinUrl ?: null, $bio ?: null, $howHeard ?: null, $gender,
         $user['id'],
     ]);
 

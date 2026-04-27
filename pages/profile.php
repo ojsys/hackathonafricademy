@@ -132,7 +132,7 @@ require_once __DIR__ . '/../includes/header.php';
                         </div>
 
                         <div class="row g-3 mb-3">
-                            <div class="col-md-6">
+                            <div class="col-md-4">
                                 <label class="form-label">Highest Education Level</label>
                                 <select class="form-select" name="education_level">
                                     <option value="">Select…</option>
@@ -141,13 +141,22 @@ require_once __DIR__ . '/../includes/header.php';
                                     <?php endforeach; ?>
                                 </select>
                             </div>
-                            <div class="col-md-6">
+                            <div class="col-md-4">
                                 <label class="form-label">Coding Experience</label>
                                 <select class="form-select" name="years_experience">
                                     <option value="">Select…</option>
                                     <?php foreach ($exps as $val => $label): ?>
                                     <option value="<?= h($val) ?>" <?= ($user['years_experience'] ?? '') === $val ? 'selected' : '' ?>><?= h($label) ?></option>
                                     <?php endforeach; ?>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Gender</label>
+                                <select class="form-select" name="gender">
+                                    <option value="">Prefer not to say</option>
+                                    <option value="male"   <?= ($user['gender'] ?? '') === 'male'   ? 'selected' : '' ?>>Male</option>
+                                    <option value="female" <?= ($user['gender'] ?? '') === 'female' ? 'selected' : '' ?>>Female</option>
+                                    <option value="other"  <?= ($user['gender'] ?? '') === 'other'  ? 'selected' : '' ?>>Other</option>
                                 </select>
                             </div>
                         </div>
