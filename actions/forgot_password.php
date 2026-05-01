@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../includes/functions.php';
+require_once __DIR__ . '/../includes/mailer.php';
 start_session();
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -18,7 +19,7 @@ if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
 }
 
 // Always show success to prevent email enumeration
-$stmt = db()->prepare('SELECT id FROM users WHERE email = ?');
+$stmt = db()->prepare('SELECT id, name FROM users WHERE email = ?');
 $stmt->execute([$email]);
 $user = $stmt->fetch();
 
@@ -28,11 +29,9 @@ if ($user) {
     $stmt = db()->prepare('UPDATE users SET reset_token = ?, reset_expires = ? WHERE id = ?');
     $stmt->execute([$token, $expires, $user['id']]);
 
-    // In production: send email with reset link
-    // mail($email, 'Password Reset', 'Reset link: https://yourdomain.com/pages/reset_password.php?token=' . $token);
-
-    // For development: show token in flash (remove in production)
-    // set_flash('info', 'Reset token (dev only): ' . $token);
+    $scheme   = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+    $resetUrl = $scheme . '://' . $_SERVER['HTTP_HOST'] . '/pages/reset_password.php?token=' . $token;
+    email_password_reset($email, $user['name'], $resetUrl);
 }
 
 set_flash('success', 'If an account with that email exists, a password reset link has been sent.');

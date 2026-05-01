@@ -265,7 +265,29 @@ HTML;
 }
 
 /**
- * 5. Exam reminder — nudge for students who haven't finished.
+ * 5. Password reset email — sent when a student requests a password reset.
+ */
+function email_password_reset(string $toEmail, string $name, string $resetUrl): bool {
+    $body = <<<HTML
+<h1>Reset your password, $name</h1>
+<p>We received a request to reset the password for your HackathonAfrica account. Click the button below to choose a new password.</p>
+
+<p style="text-align:center">
+  <a href="$resetUrl" class="btn">Reset My Password →</a>
+</p>
+
+<div class="highlight">
+  <p style="font-size:13px;margin:0"><strong>This link expires in 1 hour.</strong> If you did not request a password reset, you can safely ignore this email — your password will not change.</p>
+</div>
+
+<p style="font-size:13px;color:#8B949E">If the button above does not work, copy and paste this link into your browser:<br>$resetUrl</p>
+HTML;
+
+    return send_email($toEmail, $name, 'Reset your HackathonAfrica password', email_wrap($body, 'Click to reset your password. Link expires in 1 hour.'));
+}
+
+/**
+ * 6. Exam reminder — nudge for students who haven't finished.
  */
 function email_reminder(string $toEmail, string $name, int $daysLeft, string $dashboardUrl): bool {
     $urgency = $daysLeft <= 3 ? '⚠️ Urgent: ' : '';
