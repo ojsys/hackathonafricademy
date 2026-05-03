@@ -4,6 +4,7 @@
  * Uses SMTP via socket — no Composer/PHPMailer required.
  * Configure SMTP credentials in Admin → Settings → Email.
  */
+require_once __DIR__ . '/../config/mail.php';
 
 /**
  * Send an email using configured SMTP settings.
@@ -11,13 +12,13 @@
  */
 function send_email(string $toEmail, string $toName, string $subject, string $htmlBody): bool {
     $settings = get_site_settings();
-    $host    = $settings['smtp_host']       ?? '';
-    $port    = (int)($settings['smtp_port'] ?? 465);
-    $user    = $settings['smtp_user']       ?? '';
-    $pass    = $settings['smtp_pass']       ?? '';
-    $from    = $settings['smtp_from_email'] ?? $user;
-    $fromName= $settings['smtp_from_name']  ?? 'HackathonAfrica';
-    $enc     = $settings['smtp_encryption'] ?? 'ssl';
+    $host    = $settings['smtp_host']       ?? SMTP_HOST;
+    $port    = (int)($settings['smtp_port'] ?? SMTP_PORT);
+    $user    = $settings['smtp_user']       ?? SMTP_USER;
+    $pass    = $settings['smtp_pass']       ?? SMTP_PASS;
+    $from    = $settings['smtp_from_email'] ?? SMTP_FROM_EMAIL;
+    $fromName= $settings['smtp_from_name']  ?? SMTP_FROM_NAME;
+    $enc     = $settings['smtp_encryption'] ?? SMTP_ENC;
 
     // Log attempt
     error_log("MAILER: Sending '$subject' to $toEmail");

@@ -12,6 +12,7 @@ public/img/uploads/*
 *.env
 backend/.env
 config/local.php
+config/mail.php
 
 # ── Node / frontend build artifacts ───────────────────────────
 node_modules/
