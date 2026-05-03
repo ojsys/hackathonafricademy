@@ -4,7 +4,18 @@
  * Uses SMTP via socket — no Composer/PHPMailer required.
  * Configure SMTP credentials in Admin → Settings → Email.
  */
-require_once __DIR__ . '/../config/mail.php';
+// Load local credential overrides if the file exists (dev only; gitignored).
+// On production the DB settings (Admin → Settings → Email) take precedence anyway.
+if (file_exists(__DIR__ . '/../config/mail.php')) {
+    require_once __DIR__ . '/../config/mail.php';
+}
+if (!defined('SMTP_HOST'))       define('SMTP_HOST',       '');
+if (!defined('SMTP_PORT'))       define('SMTP_PORT',       465);
+if (!defined('SMTP_USER'))       define('SMTP_USER',       '');
+if (!defined('SMTP_PASS'))       define('SMTP_PASS',       '');
+if (!defined('SMTP_FROM_EMAIL')) define('SMTP_FROM_EMAIL', '');
+if (!defined('SMTP_FROM_NAME'))  define('SMTP_FROM_NAME',  'HackathonAfrica');
+if (!defined('SMTP_ENC'))        define('SMTP_ENC',        'ssl');
 
 /**
  * Send an email using configured SMTP settings.
