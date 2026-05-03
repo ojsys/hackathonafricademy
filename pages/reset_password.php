@@ -38,7 +38,7 @@ require_once __DIR__ . '/../includes/header.php';
                 </a>
             </p>
         <?php else: ?>
-            <form action="/actions/reset_password.php" method="POST">
+            <form action="/actions/reset_password.php" method="POST" id="resetForm">
                 <?= csrf_field() ?>
                 <input type="hidden" name="token" value="<?= h($token) ?>">
                 <div class="mb-3">
@@ -51,10 +51,23 @@ require_once __DIR__ . '/../includes/header.php';
                     <input type="password" class="form-control" id="confirm_password" name="confirm_password"
                            placeholder="Repeat your new password" required minlength="8">
                 </div>
-                <button type="submit" class="btn btn-primary w-100 py-2">
-                    <i class="bi bi-lock me-2"></i>Set New Password
+                <button type="submit" class="btn btn-primary w-100 py-2" id="resetBtn">
+                    <span id="btnDefault"><i class="bi bi-lock me-2"></i>Set New Password</span>
+                    <span id="btnLoading" style="display:none;">
+                        <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                        Saving&hellip;
+                    </span>
                 </button>
             </form>
+
+            <script>
+            document.getElementById('resetForm').addEventListener('submit', function() {
+                var btn = document.getElementById('resetBtn');
+                document.getElementById('btnDefault').style.display = 'none';
+                document.getElementById('btnLoading').style.display = 'inline';
+                btn.disabled = true;
+            });
+            </script>
         <?php endif; ?>
 
         <p class="text-center text-muted small mt-4 mb-0">
