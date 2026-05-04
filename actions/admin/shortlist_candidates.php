@@ -12,14 +12,14 @@ $action = $_POST['action'] ?? '';
 $limit  = (int)(get_setting('shortlist_limit', '100'));
 
 if ($action === 'run_ranking') {
-    // Recalculate composite score for every candidate who has at least one exam attempt
-    $students = db()->query('SELECT DISTINCT user_id FROM final_exam_attempts')->fetchAll(PDO::FETCH_COLUMN);
+    // Recalculate composite score for every registered student
+    $students = db()->query('SELECT id FROM users WHERE role = "student"')->fetchAll(PDO::FETCH_COLUMN);
     $updated = 0;
     foreach ($students as $uid) {
         create_or_update_candidate_review((int)$uid);
         $updated++;
     }
-    set_flash('success', "Ranking recalculated for $updated candidates.");
+    set_flash('success', "Scores recalculated for $updated candidates.");
 
 } elseif ($action === 'shortlist') {
     // Clear previous shortlist

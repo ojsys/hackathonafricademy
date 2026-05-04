@@ -264,11 +264,20 @@ require_once __DIR__ . '/../includes/header.php';
             </div>
         </div>
 
-        <!-- Result summary -->
+        <!-- Result summary + Recalculate button -->
         <div class="d-flex justify-content-between align-items-center mb-2">
             <span class="text-muted small">
                 <?= $totalCandidates ?> candidate<?= $totalCandidates !== 1 ? 's' : '' ?> found
             </span>
+            <form action="/actions/admin/shortlist_candidates.php" method="POST">
+                <?= csrf_field() ?>
+                <input type="hidden" name="action" value="run_ranking">
+                <button class="btn btn-sm btn-outline-warning"
+                        onclick="return confirm('Recalculate composite scores and eligibility for all candidates?')"
+                        title="Updates qualifying score, composite score, and eligibility status for every student">
+                    <i class="bi bi-arrow-clockwise me-1"></i> Recalculate All Scores
+                </button>
+            </form>
         </div>
 
         <!-- Candidates List -->
