@@ -1,4 +1,5 @@
 -- MySQL production migration: allow 'to_be_decided' eligibility status
+-- DRIVER: mysql
 -- MySQL does not enforce CHECK constraints on TEXT columns, so this is
 -- informational only. No schema change is needed on MySQL.
 -- The application code will simply write the new value into the column.

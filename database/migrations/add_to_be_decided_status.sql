@@ -1,4 +1,5 @@
 -- Migration: add 'to_be_decided' to eligibility_status CHECK constraint
+-- DRIVER: sqlite
 -- SQLite requires recreating the table to modify a CHECK constraint.
 
 PRAGMA foreign_keys=OFF;
