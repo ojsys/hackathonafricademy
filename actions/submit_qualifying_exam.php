@@ -85,7 +85,7 @@ $stmt->execute([
 db()->prepare('UPDATE proctor_sessions SET ended_at = CURRENT_TIMESTAMP WHERE attempt_id = ?')
     ->execute([$attemptId]);
 
-// Update candidate_reviews with qualifying result
+// Save qualifying score to candidate_reviews first
 $review = get_candidate_review($user['id']);
 if ($review) {
     db()->prepare('UPDATE candidate_reviews SET qualifying_score = ?, qualifying_passed = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?')
@@ -95,12 +95,11 @@ if ($review) {
         ->execute([$user['id'], $percentage, $passed]);
 }
 
-// A failed qualifying exam immediately marks the candidate as "To be Decided"
-// so they no longer appear in the eligible list.
-if (!$passed) {
-    db()->prepare('UPDATE candidate_reviews SET eligibility_status = "to_be_decided", updated_at = CURRENT_TIMESTAMP WHERE user_id = ?')
-        ->execute([$user['id']]);
-}
+// Recalculate full eligibility now that the qualifying result is recorded.
+// This handles both outcomes:
+//   pass  → promoted to 'eligible' if composite >= 75 and all courses done
+//   fail  → demoted to 'to_be_decided' regardless of course scores
+create_or_update_candidate_review($user['id']);
 
 
 header('Location: /pages/qualifying_result.php?attempt_id=' . $attemptId);

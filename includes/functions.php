@@ -500,22 +500,27 @@ function create_or_update_candidate_review(int $userId): void {
 
     $compositeScore = round(max(0, min(100, $baseScore + $speedBonus - $attemptPenalty)), 2);
 
-    // Eligibility: must pass every course AND hit the 75% composite threshold
-    $meetsThreshold = $compositeScore >= 75 && is_eligible($userId);
-    $status = 'pending';
-    if ($meetsThreshold) {
-        $status = 'eligible';
-    } elseif ($coursesCompleted > 0) {
-        $status = 'needs_review';
-    }
-
-    // Override: a failed qualifying exam always sets status to "to_be_decided"
-    // regardless of course scores, until the admin manually resolves it.
+    // Check qualifying exam result (most recent completed attempt)
     $qualStmt = db()->prepare('SELECT passed FROM qualifying_attempts WHERE user_id = ? AND completed_at IS NOT NULL ORDER BY completed_at DESC LIMIT 1');
     $qualStmt->execute([$userId]);
-    $latestQual = $qualStmt->fetch();
-    if ($latestQual !== false && !(int)$latestQual['passed']) {
+    $latestQual    = $qualStmt->fetch();
+    $qualAttempted = $latestQual !== false;
+    $qualPassed    = $qualAttempted && (int)$latestQual['passed'] === 1;
+    $qualFailed    = $qualAttempted && !$qualPassed;
+
+    // Eligibility (Option B):
+    // — eligible      : composite >= 75 AND all courses complete AND qualifying passed
+    // — to_be_decided : qualifying attempted but failed (regardless of other scores)
+    // — needs_review  : some progress but not yet fully eligible
+    // — pending       : no courses completed
+    $meetsThreshold = $compositeScore >= 75 && is_eligible($userId);
+    $status = 'pending';
+    if ($meetsThreshold && $qualPassed) {
+        $status = 'eligible';
+    } elseif ($qualFailed) {
         $status = 'to_be_decided';
+    } elseif ($coursesCompleted > 0) {
+        $status = 'needs_review';
     }
 
     if ($review) {
