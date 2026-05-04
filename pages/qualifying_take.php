@@ -29,24 +29,21 @@ if ($isAdminPreview) {
     $exam = $examStmt->fetch();
     if (!$exam) { header('Location: /pages/qualifying_exam.php'); exit; }
 
-    // Load questions — shuffle once and store order in session
-    start_session();
-    $sessionKey = 'q_order_' . $attempt['id'];
-    if (empty($_SESSION[$sessionKey])) {
-        $all = get_qualifying_questions($exam['id']);
-        $ids = array_column($all, 'id');
-        shuffle($ids);
-        $_SESSION[$sessionKey] = $ids;
-    }
-    $orderedIds = $_SESSION[$sessionKey];
+    // Load the specific question IDs assigned to this attempt (stored at start time)
+    $orderedIds = json_decode($attempt['question_ids_json'] ?? '[]', true);
 
-    // Fetch questions in shuffled order
-    $placeholders = implode(',', array_fill(0, count($orderedIds), '?'));
-    $stmt = db()->prepare("SELECT * FROM qualifying_questions WHERE id IN ($placeholders)");
-    $stmt->execute($orderedIds);
-    $byId = [];
-    foreach ($stmt->fetchAll() as $q) { $byId[$q['id']] = $q; }
-    $questions = array_map(fn($id) => $byId[$id], array_filter($orderedIds, fn($id) => isset($byId[$id])));
+    // Fetch only those questions in the stored order
+    if (!empty($orderedIds)) {
+        $placeholders = implode(',', array_fill(0, count($orderedIds), '?'));
+        $stmt = db()->prepare("SELECT * FROM qualifying_questions WHERE id IN ($placeholders)");
+        $stmt->execute($orderedIds);
+        $byId = [];
+        foreach ($stmt->fetchAll() as $q) { $byId[$q['id']] = $q; }
+        $questions = array_map(fn($id) => $byId[$id], array_filter($orderedIds, fn($id) => isset($byId[$id])));
+    } else {
+        // Fallback for legacy attempts created before question bank was added
+        $questions = get_qualifying_questions($exam['id']);
+    }
 
     // Time remaining (server-side calculation prevents cheating via refresh)
     $elapsed   = time() - strtotime($attempt['started_at']);

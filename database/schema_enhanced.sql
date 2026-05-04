@@ -248,7 +248,7 @@ CREATE TABLE candidate_reviews (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL UNIQUE,
     reviewed_by INTEGER,
-    eligibility_status TEXT DEFAULT 'pending' CHECK(eligibility_status IN ('pending','eligible','needs_review','rejected')),
+    eligibility_status TEXT DEFAULT 'pending' CHECK(eligibility_status IN ('pending','eligible','needs_review','rejected','to_be_decided')),
     courses_completed INTEGER DEFAULT 0,
     total_score DECIMAL(5,2) DEFAULT 0,
     avg_quiz_score DECIMAL(5,2) DEFAULT 0,

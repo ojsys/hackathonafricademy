@@ -32,9 +32,16 @@ if ($active) {
     exit;
 }
 
-// Create new attempt
-$stmt = db()->prepare('INSERT INTO qualifying_attempts (user_id, exam_id, started_at) VALUES (?, ?, CURRENT_TIMESTAMP)');
-$stmt->execute([$user['id'], $examId]);
+// Randomly select 50 questions from the pool for this attempt
+$allQuestions = get_qualifying_questions($examId);
+$allIds = array_column($allQuestions, 'id');
+shuffle($allIds);
+$selectedIds = array_slice($allIds, 0, 50);
+$questionIdsJson = json_encode($selectedIds);
+
+// Create new attempt with the selected question set
+$stmt = db()->prepare('INSERT INTO qualifying_attempts (user_id, exam_id, question_ids_json, started_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP)');
+$stmt->execute([$user['id'], $examId, $questionIdsJson]);
 $attemptId = db()->lastInsertId();
 
 // Create proctor session

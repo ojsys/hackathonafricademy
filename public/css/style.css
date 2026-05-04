@@ -1889,6 +1889,12 @@ textarea.form-control {
     border: 1px solid rgba(255, 59, 48, 0.3);
 }
 
+.eligibility-status.to_be_decided {
+    background: rgba(249, 115, 22, 0.1);
+    color: #f97316;
+    border: 1px solid rgba(249, 115, 22, 0.3);
+}
+
 /* ─── Utilities ─────────────────────────────────────── */
 .text-muted    { color: var(--text-muted) !important; }
 .text-primary  { color: var(--primary) !important; }

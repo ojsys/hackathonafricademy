@@ -23,7 +23,17 @@ $exam = db()->prepare('SELECT * FROM qualifying_exam WHERE id = ?');
 $exam->execute([$attempt['exam_id']]);
 $exam = $exam->fetch();
 
-$questions = get_qualifying_questions($exam['id']);
+// Grade only the questions assigned to this attempt
+$assignedIds = json_decode($attempt['question_ids_json'] ?? '[]', true);
+if (!empty($assignedIds)) {
+    $placeholders = implode(',', array_fill(0, count($assignedIds), '?'));
+    $stmt = db()->prepare("SELECT * FROM qualifying_questions WHERE id IN ($placeholders)");
+    $stmt->execute($assignedIds);
+    $questions = $stmt->fetchAll();
+} else {
+    // Fallback for legacy attempts without assigned question set
+    $questions = get_qualifying_questions($exam['id']);
+}
 
 // Grade answers
 $totalPoints = 0;
@@ -85,9 +95,13 @@ if ($review) {
         ->execute([$user['id'], $percentage, $passed]);
 }
 
-// Clear question order from session
-start_session();
-unset($_SESSION['q_order_' . $attemptId]);
+// A failed qualifying exam immediately marks the candidate as "To be Decided"
+// so they no longer appear in the eligible list.
+if (!$passed) {
+    db()->prepare('UPDATE candidate_reviews SET eligibility_status = "to_be_decided", updated_at = CURRENT_TIMESTAMP WHERE user_id = ?')
+        ->execute([$user['id']]);
+}
+
 
 header('Location: /pages/qualifying_result.php?attempt_id=' . $attemptId);
 exit;

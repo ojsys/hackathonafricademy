@@ -509,6 +509,15 @@ function create_or_update_candidate_review(int $userId): void {
         $status = 'needs_review';
     }
 
+    // Override: a failed qualifying exam always sets status to "to_be_decided"
+    // regardless of course scores, until the admin manually resolves it.
+    $qualStmt = db()->prepare('SELECT passed FROM qualifying_attempts WHERE user_id = ? AND completed_at IS NOT NULL ORDER BY completed_at DESC LIMIT 1');
+    $qualStmt->execute([$userId]);
+    $latestQual = $qualStmt->fetch();
+    if ($latestQual !== false && !(int)$latestQual['passed']) {
+        $status = 'to_be_decided';
+    }
+
     if ($review) {
         $stmt = db()->prepare('
             UPDATE candidate_reviews

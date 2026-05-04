@@ -1,0 +1,10 @@
+-- MySQL production migration: allow 'to_be_decided' eligibility status
+-- MySQL does not enforce CHECK constraints on TEXT columns, so this is
+-- informational only. No schema change is needed on MySQL.
+-- The application code will simply write the new value into the column.
+--
+-- If you used ENUM instead of TEXT, run:
+-- ALTER TABLE candidate_reviews
+--   MODIFY COLUMN eligibility_status
+--   ENUM('pending','eligible','needs_review','rejected','to_be_decided')
+--   NOT NULL DEFAULT 'pending';
