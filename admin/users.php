@@ -131,8 +131,23 @@ require_once __DIR__ . '/../includes/header.php';
 
     <div class="admin-content">
         <div class="d-flex align-items-center justify-content-between mb-4">
-            <h1 class="admin-page-title mb-0">Users</h1>
-            <span class="text-muted small"><?= $totalUsers ?> total &mdash; page <?= $page ?> of <?= max(1, $totalPages) ?></span>
+            <div>
+                <h1 class="admin-page-title mb-0">Users</h1>
+                <span class="text-muted small"><?= $totalUsers ?> user<?= $totalUsers !== 1 ? 's' : '' ?> &mdash; page <?= $page ?> of <?= max(1, $totalPages) ?></span>
+            </div>
+            <a href="/actions/admin/export_users.php?<?= h(http_build_query(array_filter([
+                'q'           => $search,
+                'role'        => $role,
+                'status'      => $statusFilt,
+                'eligible'    => $eligible,
+                'experience'  => $experience,
+                'country'     => $country,
+                'min_lessons' => $minLessons,
+                'sort'        => $sort,
+            ]))) ?>"
+               class="btn btn-success btn-sm">
+                <i class="bi bi-file-earmark-spreadsheet me-1"></i> Export CSV
+            </a>
         </div>
 
         <?php render_flash(); ?>
