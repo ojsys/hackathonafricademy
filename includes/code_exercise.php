@@ -45,7 +45,7 @@ function render_code_exercise(array $exercise, ?array $submission = null): void 
                  data-lang="<?= h($monacoLang) ?>"
                  data-exercise-id="<?= $exerciseId ?>"
                  data-testid="code-editor-<?= $exerciseId ?>"
-                 style="width: 100%;"></div>
+                 style="height: 520px; width: 100%;"></div>
             <textarea class="code-editor-textarea" 
                       id="code-textarea-<?= $exerciseId ?>"
                       data-exercise-type="<?= h($type) ?>"
