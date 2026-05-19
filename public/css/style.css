@@ -1210,12 +1210,35 @@ h6 { font-size: 1rem; font-weight: 600; }
     margin-top: 2rem;
 }
 
+/* ─── Lesson exercises — full-column breakout ───────── */
+.lesson-exercises {
+    border-top: 1px solid var(--border);
+    background: var(--bg);
+}
+
+.lesson-exercises > div {
+    padding: 2rem 2.5rem;
+}
+
+.lesson-exercises > div > h3 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 0.25rem;
+}
+
+.lesson-exercises > div > p {
+    color: var(--text-muted);
+    margin-bottom: 1.5rem;
+    font-size: 0.9rem;
+}
+
 /* ─── Code Exercise Editor ──────────────────────────── */
 .code-exercise {
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: var(--radius);
-    margin: 2rem 0;
+    margin: 0 0 1.5rem;
     overflow: hidden;
 }
 
@@ -1238,7 +1261,7 @@ h6 { font-size: 1rem; font-weight: 600; }
 .code-exercise-body {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    min-height: 400px;
+    min-height: 520px;
 }
 
 @media (max-width: 991px) {
@@ -1254,7 +1277,7 @@ h6 { font-size: 1rem; font-weight: 600; }
 .code-editor-pane textarea {
     width: 100%;
     height: 100%;
-    min-height: 400px;
+    min-height: 520px;
     background: var(--bg);
     color: var(--text-primary);
     border: none;
@@ -1266,15 +1289,26 @@ h6 { font-size: 1rem; font-weight: 600; }
     outline: none;
 }
 
+/* Monaco editor mount height: taller on large screens */
+.lesson-exercises .monaco-editor-mount {
+    height: 520px !important;
+}
+
+@media (max-width: 991px) {
+    .lesson-exercises .monaco-editor-mount {
+        height: 340px !important;
+    }
+}
+
 .code-preview-pane {
     background: #fff;
-    min-height: 400px;
+    min-height: 520px;
 }
 
 .code-preview-pane iframe {
     width: 100%;
     height: 100%;
-    min-height: 400px;
+    min-height: 520px;
     border: none;
 }
 
@@ -1295,6 +1329,14 @@ h6 { font-size: 1rem; font-weight: 600; }
 }
 .hint-toggle:hover {
     text-decoration: underline;
+}
+
+@media (max-width: 767px) {
+    .lesson-exercises > div { padding: 1.5rem; }
+    .code-exercise-body { min-height: 340px; }
+    .code-editor-pane textarea,
+    .code-preview-pane,
+    .code-preview-pane iframe { min-height: 340px; }
 }
 
 .hint-content {

@@ -45,7 +45,7 @@ function render_code_exercise(array $exercise, ?array $submission = null): void 
                  data-lang="<?= h($monacoLang) ?>"
                  data-exercise-id="<?= $exerciseId ?>"
                  data-testid="code-editor-<?= $exerciseId ?>"
-                 style="height: 300px; width: 100%;"></div>
+                 style="width: 100%;"></div>
             <textarea class="code-editor-textarea" 
                       id="code-textarea-<?= $exerciseId ?>"
                       data-exercise-type="<?= h($type) ?>"
@@ -105,7 +105,7 @@ function render_lesson_exercises(int $lessonId, int $userId): void {
     
     if (empty($exercises)) return;
     
-    echo '<div class="mt-5">';
+    echo '<div>';
     echo '<h3><i class="bi bi-code-square me-2 text-primary"></i>Code Exercises</h3>';
     echo '<p class="text-muted">Practice what you\'ve learned with these hands-on exercises.</p>';
     

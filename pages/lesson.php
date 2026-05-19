@@ -188,18 +188,19 @@ require_once __DIR__ . '/../includes/header.php';
             </div>
             <?php endif; ?>
 
-            <?php 
-            // Render code exercises if any exist for this lesson
-            require_once __DIR__ . '/../includes/code_exercise.php';
-            render_lesson_exercises($lessonId, $user['id']);
-            
-            // Load Monaco Editor if exercises exist
-            $exercises = get_exercises_for_lesson($lessonId);
-            if (!empty($exercises)) {
-                render_monaco_loader();
-            }
-            ?>
         </div>
+
+        <?php
+        // Render exercises outside .lesson-content so they span the full column width
+        require_once __DIR__ . '/../includes/code_exercise.php';
+        $exercises = get_exercises_for_lesson($lessonId);
+        if (!empty($exercises)):
+        ?>
+        <div class="lesson-exercises">
+            <?php render_lesson_exercises($lessonId, $user['id']); ?>
+        </div>
+        <?php render_monaco_loader(); ?>
+        <?php endif; ?>
 
         <!-- Nav bar -->
         <div class="lesson-nav-bar">
