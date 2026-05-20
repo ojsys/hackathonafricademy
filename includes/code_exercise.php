@@ -124,227 +124,229 @@ function render_monaco_loader(): void {
 ?>
 <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/loader.js"></script>
 <script>
-require.config({ paths: { vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs' }});
-require(['vs/editor/editor.main'], function() {
-    // Define dark theme
-    monaco.editor.defineTheme('hackathonDark', {
-        base: 'vs-dark',
-        inherit: true,
-        rules: [],
-        colors: {
-            'editor.background': '#0D1117',
-            'editor.foreground': '#E0E0E0',
-            'editorCursor.foreground': '#F8B526',
-            'editor.lineHighlightBackground': '#1C233333',
-            'editor.selectionBackground': '#F8B52633'
-        }
-    });
-
-    document.querySelectorAll('.monaco-editor-mount').forEach(function(el) {
-        const exerciseId = el.dataset.exerciseId;
-        const lang = el.dataset.lang || 'html';
-        const textarea = document.getElementById('code-textarea-' + exerciseId);
-        
-        const editor = monaco.editor.create(el, {
-            value: textarea.value,
-            language: lang,
-            theme: 'hackathonDark',
-            minimap: { enabled: false },
-            fontSize: 14,
-            fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
-            lineNumbers: 'on',
-            scrollBeyondLastLine: false,
-            automaticLayout: true,
-            tabSize: 2,
-            wordWrap: 'on',
-            padding: { top: 12 }
-        });
-
-        // Sync editor content to hidden textarea
-        editor.onDidChangeModelContent(function() {
-            textarea.value = editor.getValue();
-        });
-
-        // Store editor instance for reset/run functions
-        window['monacoEditor_' + exerciseId] = editor;
-    });
-});
-
-// ── Reset ────────────────────────────────────────────────────────────────
-window.resetExercise = function(id) {
-    const editor = window['monacoEditor_' + id];
-    const textarea = document.getElementById('code-textarea-' + id);
-    if (!editor) return;
-    if (!confirm('Reset to starter code? Your current changes will be lost.')) return;
-    const starter = (textarea && textarea.dataset.starterCode) ? textarea.dataset.starterCode : '';
-    editor.setValue(starter);
-    if (textarea) textarea.value = starter;
-    // Re-render preview with starter code
-    const exerciseEl = document.querySelector('[data-exercise-id="' + id + '"]');
-    const iframe = exerciseEl.querySelector('.code-preview-iframe');
-    const type = textarea ? textarea.getAttribute('data-exercise-type') : 'html';
-    renderToPreview(starter, type, iframe);
-    const feedback = exerciseEl.querySelector('.exercise-feedback');
-    if (feedback) { feedback.innerHTML = ''; feedback.style.display = 'none'; }
-};
-
-// ── Run: render code to preview iframe ──────────────────────────────────
-window.runExercise = function(id) {
-    const editor = window['monacoEditor_' + id];
-    if (!editor) return;
-    const code = editor.getValue();
-    const textarea = document.getElementById('code-textarea-' + id);
-    if (textarea) textarea.value = code;  // keep textarea in sync
-    const exerciseEl = document.querySelector('[data-exercise-id="' + id + '"]');
-    const iframe = exerciseEl.querySelector('.code-preview-iframe');
-    const type = textarea ? textarea.getAttribute('data-exercise-type') : 'html';
-    renderToPreview(code, type, iframe);
-    const feedback = exerciseEl.querySelector('.exercise-feedback');
-    if (feedback) { feedback.innerHTML = ''; feedback.style.display = 'none'; }
-};
-
-// ── Submit: render + evaluate requirements ───────────────────────────────
-window.submitExercise = function(id) {
-    runExercise(id);  // show preview first
-
-    const editor = window['monacoEditor_' + id];
-    const code = editor ? editor.getValue() : '';
-    const exerciseEl = document.querySelector('[data-exercise-id="' + id + '"]');
-    const feedback = exerciseEl.querySelector('.exercise-feedback');
-    const instrEl = exerciseEl.querySelector('.exercise-instructions');
-
-    if (!instrEl) { showExerciseFeedback(feedback, true, []); return; }
-
-    // Extract numbered requirements from the instructions element
-    const requirements = (instrEl.innerText || '')
-        .split('\n')
-        .map(function(l) { return l.trim(); })
-        .filter(function(l) { return /^\d+\./.test(l); })
-        .map(function(l) { return l.replace(/^\d+\.\s*/, ''); });
-
-    if (requirements.length === 0) { showExerciseFeedback(feedback, true, []); return; }
-
-    const results = requirements.map(function(req) {
-        return { text: req, met: checkRequirement(code, req) };
-    });
-    const allMet = results.every(function(r) { return r.met; });
-    showExerciseFeedback(feedback, allMet, results);
-};
-
-// ── Render code into the preview iframe using a Blob URL ─────────────────
-function renderToPreview(code, exerciseType, iframe) {
-    let html = code;
-    // If already a full HTML document, render directly regardless of type
-    const isFullDoc = /^\s*(<!DOCTYPE|<html)/i.test(code.trim());
-
-    if (!isFullDoc) {
-        if (exerciseType === 'css') {
-            html = '<!DOCTYPE html><html><head><style>body{font-family:sans-serif;padding:1.25rem;margin:0}' +
-                   code + '</style></head><body>' +
+(function () {
+    /* ─── Build HTML for the live preview iframe ─────────────────────────── */
+    function buildHtml(code, type) {
+        var isDoc = /^\s*(<!doctype|<html)/i.test(code);
+        if (type === 'css') {
+            return '<!DOCTYPE html><html><head><meta charset="utf-8">' +
+                   '<style>body{font-family:sans-serif;padding:1.25rem;margin:0}' + code + '</style>' +
+                   '</head><body>' +
                    '<h1>Heading One</h1><h2>Heading Two</h2>' +
-                   '<p>This is a paragraph of sample text.</p>' +
-                   '<button class="btn">Button</button> <a href="#">Link</a>' +
-                   '<ul><li>List item one</li><li>List item two</li><li>List item three</li></ul>' +
-                   '<div class="box card container" style="margin-top:1rem;padding:1rem;border:1px solid #ddd">Sample div / card</div>' +
+                   '<p>This is a sample paragraph of text.</p>' +
+                   '<button>Button</button> <a href="#">A link</a>' +
+                   '<ul><li>Item one</li><li>Item two</li><li>Item three</li></ul>' +
+                   '<div class="box card" style="margin-top:1rem;padding:1rem;border:1px solid #ccc">Sample div / card</div>' +
                    '</body></html>';
-        } else if (exerciseType === 'javascript') {
-            var escaped = code.replace(/<\/script>/gi, '<\\/script>');
-            html = '<!DOCTYPE html><html><head><style>' +
-                   'body{font-family:system-ui,sans-serif;padding:1rem;background:#0d1117;color:#e0e0e0;margin:0}' +
-                   '#output{background:#161b22;padding:1rem;border-radius:6px;font-family:monospace;white-space:pre-wrap;min-height:4rem;font-size:.9rem}' +
-                   '.lbl{font-size:.7rem;color:#8b949e;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.35rem}' +
-                   '</style></head><body>' +
-                   '<div class="lbl">Console output</div><div id="output">…</div><script>' +
-                   '(function(){' +
-                   'var o=document.getElementById("output");o.textContent="";' +
-                   'var cl=console.log,ce=console.error;' +
-                   'function fmt(a){return a.map(function(x){return typeof x==="object"?JSON.stringify(x,null,2):String(x);}).join(" ");}' +
-                   'console.log=function(){o.textContent+=fmt(Array.from(arguments))+"\\n";cl.apply(console,arguments);};' +
-                   'console.error=function(){o.innerHTML+=\'<span style="color:#ff7b72">\'+fmt(Array.from(arguments))+"</span>\\n";ce.apply(console,arguments);};' +
-                   'try{' + escaped + '}catch(e){o.innerHTML+=\'<span style="color:#ff7b72">Error: \'+e.message+"</span>";}' +
-                   '})();<\/script></body></html>';
         }
+        if (type === 'javascript') {
+            var safe = code.replace(/<\/script>/gi, '<\\/script>');
+            return '<!DOCTYPE html><html><head><meta charset="utf-8"><style>' +
+                   'body{font-family:system-ui;padding:1rem;background:#0d1117;color:#e0e0e0;margin:0}' +
+                   '#__out{background:#161b22;padding:1rem;border-radius:6px;font-family:monospace;white-space:pre-wrap;font-size:.9rem;min-height:3rem}' +
+                   '.lbl{font-size:.7rem;color:#8b949e;text-transform:uppercase;margin-bottom:.5rem}' +
+                   '</style></head><body>' +
+                   '<div class="lbl">Console output</div><div id="__out"></div>' +
+                   '<script>(function(){' +
+                   'var o=document.getElementById("__out");' +
+                   'var _l=console.log,_e=console.error;' +
+                   'console.log=function(){o.textContent+=Array.from(arguments).map(function(x){return typeof x==="object"?JSON.stringify(x,null,2):String(x);}).join(" ")+"\n";_l.apply(console,arguments);};' +
+                   'console.error=function(){o.innerHTML+=\'<span style="color:#f87171">\'+Array.from(arguments).map(String).join(" ")+"</span>\n";_e.apply(console,arguments);};' +
+                   'try{' + safe + '}catch(e){o.innerHTML+=\'<span style="color:#f87171">Error: \'+e.message+\'</span>\';}' +
+                   '}());<\/script></body></html>';
+        }
+        /* html / combined */
+        if (isDoc) return code;
+        return '<!DOCTYPE html><html><head><meta charset="utf-8">' +
+               '<style>body{font-family:sans-serif;padding:1rem;margin:0}</style>' +
+               '</head><body>' + code + '</body></html>';
     }
 
-    var blob = new Blob([html], { type: 'text/html' });
-    iframe.src = URL.createObjectURL(blob);
-}
-
-// ── Check one requirement against the submitted code ─────────────────────
-function checkRequirement(code, requirement) {
-    var lc  = code.toLowerCase();
-    var req = requirement.toLowerCase();
-
-    // 1. Quoted literals that should appear verbatim in the code
-    var quoted = [];
-    requirement.replace(/['"`]([^'"`]{2,}?)['"`]/g, function(_, m) { quoted.push(m.toLowerCase()); });
-    if (quoted.length > 0 && quoted.some(function(q) { return lc.includes(q); })) return true;
-
-    // 2. HTML tags mentioned in the requirement
-    var tagRe = /\b(html|head|body|div|span|p\b|h[1-6]|a\b|img|ul|ol|li|nav|header|footer|main|section|article|aside|form|input|button|select|textarea|table|tr|td|th|label|fieldset|legend|figure|figcaption|canvas|svg|video|audio|source|strong|em|code|pre|blockquote|br|hr|meta|title|link|script|style|details|summary|template|slot)\b/g;
-    var tags = [];
-    req.replace(tagRe, function(m) { if (!tags.includes(m)) tags.push(m); });
-    if (tags.length > 0) return tags.every(function(tag) { return lc.includes('<' + tag); });
-
-    // 3. CSS properties mentioned
-    var cssProps = ['display','flex','grid','color','background','margin','padding','border','font-size',
-                    'font-weight','font-family','width','height','position','transform','transition',
-                    'animation','opacity','overflow','z-index','cursor','gap','align-items',
-                    'justify-content','grid-template','flex-wrap','clamp','var(--','@keyframes',
-                    '@media','min-width','max-width'];
-    for (var i = 0; i < cssProps.length; i++) {
-        if (req.includes(cssProps[i]) && lc.includes(cssProps[i])) return true;
+    function doPreview(code, type, iframe) {
+        try {
+            var blob = new Blob([buildHtml(code, type)], { type: 'text/html' });
+            iframe.src = URL.createObjectURL(blob);
+        } catch (e) { console.error('doPreview:', e); }
     }
 
-    // 4. JavaScript constructs
-    var jsKw = ['function','const','let','var','return','if','else','for','while','class','new',
-                'async','await','fetch','addeventlistener','queryselector','getelementbyid',
-                'innerhtml','textcontent','classlist','promise','settimeout','setinterval',
-                'json.stringify','json.parse','array.from','object.keys','map(','filter(','reduce('];
-    for (var j = 0; j < jsKw.length; j++) {
-        if (req.includes(jsKw[j]) && lc.includes(jsKw[j])) return true;
+    /* ─── Requirement checker ────────────────────────────────────────────── */
+    function meetsReq(code, req) {
+        var lc  = code.toLowerCase();
+        var rlc = req.toLowerCase();
+        /* quoted literal */
+        var qm = req.match(/['"`]([^'"`]{2,30}?)['"`]/g);
+        if (qm) for (var qi = 0; qi < qm.length; qi++) {
+            if (lc.indexOf(qm[qi].slice(1, -1).toLowerCase()) !== -1) return true;
+        }
+        /* HTML tags named in requirement */
+        var tagRe = /\b(html|head|body|div|span|p\b|h[1-6]|a\b|img|ul|ol|li|nav|header|footer|main|section|article|aside|form|input|button|select|textarea|table|tr|td|th|label|fieldset|legend|figure|figcaption|canvas|svg|video|audio|source|strong|em|code|pre|blockquote|meta|title|link|script|style)\b/g;
+        var tags = rlc.match(tagRe);
+        if (tags) {
+            var uniq = tags.filter(function (t, i, a) { return a.indexOf(t) === i; });
+            return uniq.every(function (t) { return lc.indexOf('<' + t) !== -1; });
+        }
+        /* CSS properties */
+        var css = ['display','flex','grid','color','background','margin','padding','border',
+                   'font-size','font-weight','width','height','position','transform',
+                   'transition','animation','opacity','gap','align-items','justify-content',
+                   '@keyframes','@media','clamp','var(--'];
+        for (var ci = 0; ci < css.length; ci++) {
+            if (rlc.indexOf(css[ci]) !== -1 && lc.indexOf(css[ci]) !== -1) return true;
+        }
+        /* JS keywords */
+        var js = ['function','const','let','var','return','if','else','for','while','class',
+                  'new','async','await','fetch','addeventlistener','queryselector',
+                  'getelementbyid','innerhtml','textcontent','classlist','promise','settimeout'];
+        for (var ji = 0; ji < js.length; ji++) {
+            if (rlc.indexOf(js[ji]) !== -1 && lc.indexOf(js[ji]) !== -1) return true;
+        }
+        /* numeric count: "3 paragraphs" */
+        var nm = rlc.match(/(\d+)\s+(paragraph|heading|link|list item|input|button)/);
+        if (nm) {
+            var n = parseInt(nm[1]);
+            var map = { paragraph:'<p', heading:'<h', link:'<a', 'list item':'<li', input:'<input', button:'<button' };
+            var ndl = (map[nm[2]] || ('<' + nm[2])).replace(/</g, '\\<');
+            var cnt = (lc.match(new RegExp(ndl, 'g')) || []).length;
+            return cnt >= n;
+        }
+        return lc.replace(/\s/g, '').length > 40;
     }
 
-    // 5. Exact count checks: "3 paragraphs", "5 list items", etc.
-    var countMatch = req.match(/(\d+)\s+(paragraph|heading|link|list item|input|button|column|row|section|div)/);
-    if (countMatch) {
-        var n = parseInt(countMatch[1]);
-        var elemMap = { paragraph:'<p', heading:'<h', link:'<a', 'list item':'<li',
-                        input:'<input', button:'<button', section:'<section', div:'<div' };
-        var needle = elemMap[countMatch[2]] || '<' + countMatch[2];
-        var found = (lc.match(new RegExp(needle.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'), 'g')) || []).length;
-        return found >= n;
-    }
-
-    // Fallback: code has meaningful content
-    return lc.replace(/[\s\n]/g, '').length > 40;
-}
-
-// ── Render structured pass/fail feedback ─────────────────────────────────
-function showExerciseFeedback(el, allMet, results) {
-    if (!el) return;
-    if (results.length === 0) {
-        el.innerHTML = '<div class="ex-fb ex-fb-info"><i class="bi bi-eye me-2"></i>Preview updated — check the result on the right.</div>';
+    /* ─── Feedback renderer ──────────────────────────────────────────────── */
+    function renderFeedback(el, allMet, results) {
+        if (!el) return;
+        if (!results.length) {
+            el.innerHTML = '<div class="ex-fb ex-fb-info"><i class="bi bi-eye me-2"></i>Preview updated — inspect the result on the right.</div>';
+            el.style.display = 'block';
+            return;
+        }
+        var passed = results.filter(function (r) { return r.met; }).length;
+        var tone   = allMet ? 'success' : (passed > 0 ? 'warning' : 'danger');
+        var ico    = allMet ? 'check-circle-fill' : (passed > 0 ? 'exclamation-circle-fill' : 'x-circle-fill');
+        var head   = allMet
+            ? 'All requirements met — great work!'
+            : (passed + ' of ' + results.length + ' requirement' + (results.length > 1 ? 's' : '') + ' completed.');
+        var h = '<div class="ex-fb ex-fb-' + tone + '"><div class="ex-fb-head"><i class="bi bi-' + ico + ' me-2"></i>' + head + '</div><ul class="ex-fb-list">';
+        results.forEach(function (r) {
+            h += '<li><i class="bi bi-' + (r.met ? 'check-circle-fill text-success' : 'circle text-muted') + ' me-2"></i>' + r.text + '</li>';
+        });
+        h += '</ul></div>';
+        el.innerHTML = h;
         el.style.display = 'block';
-        return;
     }
-    var passed  = results.filter(function(r) { return r.met; }).length;
-    var tone    = allMet ? 'success' : (passed > 0 ? 'warning' : 'danger');
-    var iconCls = allMet ? 'check-circle-fill' : (passed > 0 ? 'exclamation-circle-fill' : 'x-circle-fill');
-    var headline = allMet
-        ? 'All requirements met — great work!'
-        : passed + ' of ' + results.length + ' requirement' + (results.length > 1 ? 's' : '') + ' completed.';
 
-    var html = '<div class="ex-fb ex-fb-' + tone + '">' +
-               '<div class="ex-fb-head"><i class="bi bi-' + iconCls + ' me-2"></i>' + headline + '</div>' +
-               '<ul class="ex-fb-list">';
-    results.forEach(function(r) {
-        html += '<li><i class="bi bi-' + (r.met ? 'check-circle-fill text-success' : 'circle text-muted') + ' me-2"></i>' + r.text + '</li>';
+    /* ─── Convenience getters ────────────────────────────────────────────── */
+    function getCode(id) {
+        var ed = window['monacoEditor_' + id];
+        if (ed) return ed.getValue();
+        var ta = document.getElementById('code-textarea-' + id);
+        return ta ? ta.value : '';
+    }
+    function getType(id) {
+        var ta = document.getElementById('code-textarea-' + id);
+        return ta ? (ta.getAttribute('data-exercise-type') || 'html') : 'html';
+    }
+    function getEl(id)     { return document.querySelector('[data-exercise-id="' + id + '"]'); }
+    function getIframe(id) { var e = getEl(id); return e ? e.querySelector('.code-preview-iframe') : null; }
+    function getFb(id)     { var e = getEl(id); return e ? e.querySelector('.exercise-feedback')   : null; }
+
+    /* ─── Button handlers ────────────────────────────────────────────────── */
+    window.runExercise = function (id) {
+        try {
+            var iframe = getIframe(id);
+            if (iframe) doPreview(getCode(id), getType(id), iframe);
+            var fb = getFb(id);
+            if (fb) { fb.innerHTML = ''; fb.style.display = 'none'; }
+        } catch (e) { console.error('runExercise:', e); }
+    };
+
+    window.submitExercise = function (id) {
+        try {
+            window.runExercise(id);
+            var code = getCode(id);
+            var el   = getEl(id);
+            var fb   = getFb(id);
+            var ins  = el ? el.querySelector('.exercise-instructions') : null;
+            if (!ins) { renderFeedback(fb, true, []); return; }
+            var reqs = (ins.innerText || '').split('\n')
+                .map(function (l) { return l.trim(); })
+                .filter(function (l) { return /^\d+\./.test(l); })
+                .map(function (l) { return l.replace(/^\d+\.\s*/, ''); });
+            if (!reqs.length) { renderFeedback(fb, true, []); return; }
+            var results = reqs.map(function (r) { return { text: r, met: meetsReq(code, r) }; });
+            renderFeedback(fb, results.every(function (r) { return r.met; }), results);
+        } catch (e) { console.error('submitExercise:', e); }
+    };
+
+    window.resetExercise = function (id) {
+        try {
+            if (!confirm('Reset to starter code? Your current changes will be lost.')) return;
+            var ta      = document.getElementById('code-textarea-' + id);
+            var starter = ta ? (ta.dataset.starterCode || '') : '';
+            var ed      = window['monacoEditor_' + id];
+            if (ed) ed.setValue(starter);
+            if (ta)  ta.value = starter;
+            var iframe = getIframe(id);
+            if (iframe) doPreview(starter, getType(id), iframe);
+            var fb = getFb(id);
+            if (fb) { fb.innerHTML = ''; fb.style.display = 'none'; }
+        } catch (e) { console.error('resetExercise:', e); }
+    };
+
+    /* ─── Monaco init (async — editors load after buttons are wired up) ──── */
+    require.config({ paths: { vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs' } });
+    require(['vs/editor/editor.main'], function () {
+        monaco.editor.defineTheme('hackathonDark', {
+            base: 'vs-dark', inherit: true, rules: [],
+            colors: {
+                'editor.background':             '#0D1117',
+                'editor.foreground':             '#E0E0E0',
+                'editorCursor.foreground':       '#F8B526',
+                'editor.lineHighlightBackground':'#1C233333',
+                'editor.selectionBackground':    '#F8B52633'
+            }
+        });
+
+        document.querySelectorAll('.monaco-editor-mount').forEach(function (mountEl) {
+            var exerciseId = mountEl.dataset.exerciseId;
+            var lang       = mountEl.dataset.lang || 'html';
+            var textarea   = document.getElementById('code-textarea-' + exerciseId);
+            if (!textarea) return;
+
+            var editor = monaco.editor.create(mountEl, {
+                value:                textarea.value,
+                language:             lang,
+                theme:                'hackathonDark',
+                minimap:              { enabled: false },
+                fontSize:             14,
+                fontFamily:           "'JetBrains Mono', 'Fira Code', monospace",
+                lineNumbers:          'on',
+                scrollBeyondLastLine: false,
+                automaticLayout:      true,
+                tabSize:              2,
+                wordWrap:             'on',
+                padding:              { top: 12 }
+            });
+
+            window['monacoEditor_' + exerciseId] = editor;
+
+            /* initial preview */
+            var type   = textarea.getAttribute('data-exercise-type') || 'html';
+            var iframe = mountEl.closest('.code-exercise').querySelector('.code-preview-iframe');
+            if (iframe) doPreview(textarea.value, type, iframe);
+
+            /* live auto-preview, debounced 350 ms */
+            var timer;
+            editor.onDidChangeModelContent(function () {
+                textarea.value = editor.getValue();
+                clearTimeout(timer);
+                timer = setTimeout(function () {
+                    if (iframe) doPreview(editor.getValue(), type, iframe);
+                }, 350);
+            });
+        });
     });
-    html += '</ul></div>';
-    el.innerHTML = html;
-    el.style.display = 'block';
-}
+}());
 </script>
 <?php
 }
