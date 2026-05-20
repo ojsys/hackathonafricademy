@@ -27,14 +27,19 @@ require_once __DIR__ . '/../includes/header.php';
 ?>
 
 <style>
-.cert-container { max-width: 900px; margin: 0 auto; }
+.cert-container { max-width: 960px; margin: 0 auto; }
 .certificate {
     background: linear-gradient(135deg, #0D1117 0%, #151B23 50%, #1C2333 100%);
     border: 3px solid var(--primary);
     border-radius: 12px;
-    padding: 60px 50px;
+    padding: 56px 64px;
     position: relative;
     overflow: hidden;
+    /* A4 landscape aspect ratio: 297 / 210 ≈ 1.414 */
+    aspect-ratio: 297 / 210;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
 }
 .certificate::before {
     content: '';
@@ -44,26 +49,29 @@ require_once __DIR__ . '/../includes/header.php';
     border-radius: 8px;
     pointer-events: none;
 }
-.cert-logo { height: 50px; width: auto; margin-bottom: 1.5rem; }
+.cert-logo { height: 46px; width: auto; margin-bottom: 1.25rem; }
 .cert-title {
     font-family: var(--font-heading);
-    font-size: 2rem; font-weight: 800;
+    font-size: 1.9rem; font-weight: 800;
     background: linear-gradient(135deg, #F8B526 0%, #FFC03D 100%);
     -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-    background-clip: text; margin-bottom: 0.5rem;
+    background-clip: text; margin-bottom: 0.4rem;
 }
-.cert-subtitle { color: var(--text-muted); font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.15em; margin-bottom: 2rem; }
-.cert-recipient { font-size: 2.5rem; font-weight: 700; font-family: var(--font-heading); color: #fff; margin-bottom: 0.5rem; }
-.cert-course { font-size: 1.25rem; color: var(--primary); font-weight: 600; margin-bottom: 2rem; }
-.cert-details { display: flex; justify-content: space-between; border-top: 1px solid var(--border); padding-top: 1.5rem; margin-top: 2rem; }
+.cert-subtitle { color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.15em; margin-bottom: 1.5rem; }
+.cert-recipient { font-size: 2.2rem; font-weight: 700; font-family: var(--font-heading); color: #fff; margin-bottom: 0.4rem; }
+.cert-course { font-size: 1.15rem; color: var(--primary); font-weight: 600; margin-bottom: 1.5rem; }
+.cert-body-text { color: #a0a8b8; font-size: .9rem; margin-bottom: .2rem; }
+.cert-details { display: flex; justify-content: space-between; border-top: 1px solid rgba(248,181,38,0.25); padding-top: 1.25rem; margin-top: 1.5rem; }
 .cert-detail { text-align: center; }
-.cert-detail-label { font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.1em; }
-.cert-detail-value { font-size: 0.95rem; font-weight: 600; color: var(--text-primary); margin-top: 0.25rem; }
-.cert-id { position: absolute; bottom: 25px; right: 30px; font-family: var(--font-mono); font-size: 0.7rem; color: var(--text-muted); }
+.cert-detail-label { font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.1em; }
+.cert-detail-value { font-size: 0.9rem; font-weight: 600; color: var(--text-primary); margin-top: 0.2rem; }
+.cert-id { position: absolute; bottom: 22px; right: 28px; font-family: var(--font-mono); font-size: 0.65rem; color: var(--text-muted); }
 @media print {
-    body { background: #0D1117 !important; }
+    @page { size: A4 landscape; margin: 0; }
+    body { background: #0D1117 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     .no-print { display: none !important; }
-    .certificate { box-shadow: none; }
+    .cert-container { max-width: 100%; padding: 10mm; }
+    .certificate { border-radius: 0; box-shadow: none; aspect-ratio: unset; height: calc(100vh - 20mm); }
 }
 </style>
 
@@ -74,9 +82,15 @@ require_once __DIR__ . '/../includes/header.php';
                 <h1 class="fw-700 mb-1" data-testid="cert-page-title">Your Certificate</h1>
                 <p class="text-muted mb-0">You earned this! Share it with pride.</p>
             </div>
-            <div class="d-flex gap-2">
-                <button onclick="window.print()" class="btn btn-primary" data-testid="print-cert">
-                    <i class="bi bi-printer me-1"></i> Print / Save PDF
+            <div class="d-flex gap-2 flex-wrap">
+                <button id="btn-pdf" onclick="exportCert('pdf')" class="btn btn-primary">
+                    <i class="bi bi-file-earmark-pdf me-1"></i> Download PDF
+                </button>
+                <button id="btn-jpeg" onclick="exportCert('jpeg')" class="btn btn-outline-primary">
+                    <i class="bi bi-image me-1"></i> Download JPEG
+                </button>
+                <button onclick="window.print()" class="btn btn-outline-secondary">
+                    <i class="bi bi-printer me-1"></i> Print
                 </button>
                 <a href="/pages/dashboard.php" class="btn btn-outline-secondary">
                     <i class="bi bi-arrow-left me-1"></i> Dashboard
@@ -90,13 +104,13 @@ require_once __DIR__ . '/../includes/header.php';
                 <div class="cert-title">Certificate of Completion</div>
                 <div class="cert-subtitle">HackathonAfrica Learning Platform</div>
 
-                <p class="text-muted mb-1">This certifies that</p>
+                <p class="cert-body-text mb-1">This certifies that</p>
                 <div class="cert-recipient" data-testid="cert-name"><?= h($user['name']) ?></div>
 
-                <p class="text-muted mb-1">has successfully completed</p>
+                <p class="cert-body-text mb-1">has successfully completed</p>
                 <div class="cert-course" data-testid="cert-course"><?= h($course['title']) ?></div>
 
-                <p class="text-muted small mb-0">
+                <p class="cert-body-text small mb-0">
                     including all modules, exercises, and the final assessment
                     <?php if ($attempt): ?>
                     with a score of <strong style="color: var(--primary)"><?= $attempt['score'] ?>%</strong>
@@ -123,5 +137,61 @@ require_once __DIR__ . '/../includes/header.php';
         </div>
     </div>
 </div>
+
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script>
+function exportCert(format) {
+    var el  = document.querySelector('.certificate');
+    var btn = document.getElementById('btn-' + format);
+    var orig = btn.innerHTML;
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i> Generating...';
+
+    var recipientName = <?= json_encode($user['name']) ?>;
+    var courseName    = <?= json_encode($course['title']) ?>;
+    var slug = (recipientName + '-' + courseName).replace(/[^a-zA-Z0-9]+/g, '-').toLowerCase();
+    var filename = 'certificate-' + slug;
+
+    html2canvas(el, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#0D1117',
+        logging: false
+    }).then(function (canvas) {
+        if (format === 'jpeg') {
+            var link = document.createElement('a');
+            link.download = filename + '.jpg';
+            link.href = canvas.toDataURL('image/jpeg', 0.95);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        } else {
+            var jspdf   = window.jspdf;
+            var pdf     = new jspdf.jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+            var pageW   = pdf.internal.pageSize.getWidth();   // 297 mm
+            var pageH   = pdf.internal.pageSize.getHeight();  // 210 mm
+            var margin  = 8;
+            var maxW    = pageW - margin * 2;
+            var maxH    = pageH - margin * 2;
+            var ratio   = Math.min(maxW / canvas.width, maxH / canvas.height);
+            var imgW    = canvas.width  * ratio;
+            var imgH    = canvas.height * ratio;
+            var x       = (pageW - imgW) / 2;
+            var y       = (pageH - imgH) / 2;
+            pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', x, y, imgW, imgH);
+            pdf.save(filename + '.pdf');
+        }
+        btn.disabled = false;
+        btn.innerHTML = orig;
+    }).catch(function (e) {
+        console.error('exportCert:', e);
+        btn.disabled = false;
+        btn.innerHTML = orig;
+    });
+}
+</script>
 
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>

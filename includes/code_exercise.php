@@ -125,6 +125,8 @@ function render_monaco_loader(): void {
 <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/loader.js"></script>
 <script>
 (function () {
+    var _csrf = '<?= csrf_token() ?>';
+
     /* ─── Build HTML for the live preview iframe ─────────────────────────── */
     function buildHtml(code, type) {
         var isDoc = /^\s*(<!doctype|<html)/i.test(code);
@@ -260,22 +262,83 @@ function render_monaco_loader(): void {
         } catch (e) { console.error('runExercise:', e); }
     };
 
+    function saveSubmission(id, code, isCorrect, metCount, total, btn, fb) {
+        var fd = new FormData();
+        fd.append('csrf_token',    _csrf);
+        fd.append('exercise_id',   id);
+        fd.append('submitted_code', code);
+        fd.append('is_correct',    isCorrect ? '1' : '0');
+        fd.append('reqs_met',      metCount);
+        fd.append('reqs_total',    total);
+
+        fetch('/actions/submit_exercise.php', { method: 'POST', body: fd })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (btn) {
+                    btn.disabled = false;
+                    if (data.is_correct) {
+                        btn.innerHTML = '<i class="bi bi-patch-check-fill me-1"></i> Completed!';
+                        btn.classList.replace('btn-primary', 'btn-success');
+                    } else {
+                        btn.innerHTML = '<i class="bi bi-check2 me-1"></i> Submit';
+                    }
+                }
+                if (fb && fb.firstElementChild) {
+                    var note = document.createElement('div');
+                    note.style.cssText = 'font-size:.8rem;padding:.35rem 1.5rem .5rem;color:var(--text-muted)';
+                    note.innerHTML = '<i class="bi bi-cloud-check-fill me-1 text-success"></i>' +
+                                     (data.message || 'Saved.');
+                    fb.firstElementChild.appendChild(note);
+                }
+            })
+            .catch(function (e) {
+                console.error('saveSubmission:', e);
+                if (btn) { btn.disabled = false; btn.innerHTML = '<i class="bi bi-check2 me-1"></i> Submit'; }
+            });
+    }
+
     window.submitExercise = function (id) {
         try {
             window.runExercise(id);
             var code = getCode(id);
             var el   = getEl(id);
             var fb   = getFb(id);
+            var btn  = el ? el.querySelector('.submit-exercise-btn') : null;
             var ins  = el ? el.querySelector('.exercise-instructions') : null;
-            if (!ins) { renderFeedback(fb, true, []); return; }
+
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i> Checking...';
+            }
+
+            if (!ins) {
+                renderFeedback(fb, true, []);
+                saveSubmission(id, code, true, 0, 0, btn, fb);
+                return;
+            }
+
             var reqs = (ins.innerText || '').split('\n')
                 .map(function (l) { return l.trim(); })
                 .filter(function (l) { return /^\d+\./.test(l); })
                 .map(function (l) { return l.replace(/^\d+\.\s*/, ''); });
-            if (!reqs.length) { renderFeedback(fb, true, []); return; }
-            var results = reqs.map(function (r) { return { text: r, met: meetsReq(code, r) }; });
-            renderFeedback(fb, results.every(function (r) { return r.met; }), results);
-        } catch (e) { console.error('submitExercise:', e); }
+
+            if (!reqs.length) {
+                renderFeedback(fb, true, []);
+                saveSubmission(id, code, true, 0, 0, btn, fb);
+                return;
+            }
+
+            var results  = reqs.map(function (r) { return { text: r, met: meetsReq(code, r) }; });
+            var allMet   = results.every(function (r) { return r.met; });
+            var metCount = results.filter(function (r) { return r.met; }).length;
+
+            renderFeedback(fb, allMet, results);
+            saveSubmission(id, code, allMet, metCount, reqs.length, btn, fb);
+        } catch (e) {
+            console.error('submitExercise:', e);
+            var btn2 = document.querySelector('[data-exercise-id="' + id + '"] .submit-exercise-btn');
+            if (btn2) { btn2.disabled = false; btn2.innerHTML = '<i class="bi bi-check2 me-1"></i> Submit'; }
+        }
     };
 
     window.resetExercise = function (id) {
