@@ -176,10 +176,12 @@ function initHintToggles() {
     
     hintToggles.forEach(toggle => {
         toggle.addEventListener('click', function() {
-            const hintContent = this.closest('.code-exercise-footer')?.querySelector('.hint-content');
+            const hintContent = this.closest('.code-exercise')?.querySelector('.hint-content');
             if (hintContent) {
                 hintContent.classList.toggle('show');
-                this.textContent = hintContent.classList.contains('show') ? 'Hide Hint' : 'Show Hint';
+                this.innerHTML = hintContent.classList.contains('show')
+                    ? '<i class="bi bi-lightbulb-fill me-1"></i> Hide Hint'
+                    : '<i class="bi bi-lightbulb me-1"></i> Show Hint';
             }
         });
     });

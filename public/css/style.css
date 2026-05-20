@@ -1339,6 +1339,33 @@ h6 { font-size: 1rem; font-weight: 600; }
     .code-preview-pane iframe { min-height: 340px; }
 }
 
+/* ─── Exercise feedback panels ──────────────────────── */
+.exercise-feedback { display: none; }
+
+.ex-fb {
+    padding: 1rem 1.5rem;
+    border-top: 1px solid var(--border);
+}
+.ex-fb-success { background: rgba(34,197,94,.1);  border-left: 3px solid #22c55e; }
+.ex-fb-warning { background: rgba(234,179,8,.1);  border-left: 3px solid #eab308; }
+.ex-fb-danger  { background: rgba(239,68,68,.1);  border-left: 3px solid #ef4444; }
+.ex-fb-info    { background: rgba(99,102,241,.08); border-left: 3px solid var(--primary); }
+
+.ex-fb-head {
+    font-weight: 600;
+    font-size: .9rem;
+    margin-bottom: .6rem;
+    color: var(--text-primary);
+}
+.ex-fb-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    font-size: .85rem;
+    color: var(--text-secondary);
+}
+.ex-fb-list li { margin-bottom: .3rem; }
+
 .hint-content {
     background: rgba(255, 204, 0, 0.1);
     border: 1px solid rgba(255, 204, 0, 0.3);
