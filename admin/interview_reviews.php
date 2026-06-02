@@ -42,12 +42,22 @@ if ($sessionId) {
     <div class="admin-layout">
         <?php require __DIR__ . '/partials/sidebar.php'; ?>
         <div class="admin-content">
-            <div class="d-flex align-items-center gap-3 mb-4">
+            <div class="d-flex align-items-center gap-3 mb-4 flex-wrap">
                 <a href="/admin/interview_reviews.php" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>All Reviews</a>
                 <h1 class="admin-page-title mb-0">Interview — <?= h($candidate['name']) ?></h1>
-                <span class="badge-chip <?= $session['status'] === 'reviewed' ? 'chip-published' : 'chip-draft' ?> ms-auto">
-                    <?= $session['status'] === 'reviewed' ? 'Reviewed — ' . ucfirst($session['review_decision']) : 'Pending review' ?>
-                </span>
+                <div class="d-flex align-items-center gap-2 ms-auto">
+                    <span class="badge-chip <?= $session['status'] === 'reviewed' ? 'chip-published' : 'chip-draft' ?>">
+                        <?= $session['status'] === 'reviewed' ? 'Reviewed — ' . ucfirst($session['review_decision']) : 'Pending review' ?>
+                    </span>
+                    <form method="POST" action="/actions/admin/reset_interview.php" class="m-0"
+                          onsubmit="return confirm('Delete this interview for <?= h(addslashes($candidate['name'])) ?>? Their answers, proctor snapshots and event log will be permanently removed and they can start the interview over. This cannot be undone.');">
+                        <?= csrf_field() ?>
+                        <input type="hidden" name="session_id" value="<?= (int)$sessionId ?>">
+                        <button type="submit" class="btn btn-sm btn-outline-danger">
+                            <i class="bi bi-trash me-1"></i>Delete &amp; Reset
+                        </button>
+                    </form>
+                </div>
             </div>
             <?php render_flash(); ?>
 
@@ -273,7 +283,17 @@ require_once __DIR__ . '/../includes/header.php';
                                 <span class="badge-chip chip-draft">Pending</span>
                                 <?php endif; ?>
                             </td>
-                            <td><a href="/admin/interview_reviews.php?session_id=<?= (int)$r['id'] ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-search me-1"></i>Review</a></td>
+                            <td>
+                                <div class="d-flex gap-1 justify-content-end">
+                                    <a href="/admin/interview_reviews.php?session_id=<?= (int)$r['id'] ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-search me-1"></i>Review</a>
+                                    <form method="POST" action="/actions/admin/reset_interview.php" class="m-0"
+                                          onsubmit="return confirm('Delete this interview for <?= h(addslashes($r['name'])) ?> so they can start over? This permanently removes their answers, snapshots and event log and cannot be undone.');">
+                                        <?= csrf_field() ?>
+                                        <input type="hidden" name="session_id" value="<?= (int)$r['id'] ?>">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete &amp; reset"><i class="bi bi-trash"></i></button>
+                                    </form>
+                                </div>
+                            </td>
                         </tr>
                         <?php endforeach; ?>
                     </tbody>
