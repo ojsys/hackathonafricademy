@@ -124,7 +124,7 @@ require_once __DIR__ . '/../includes/header.php';
 (function () {
     var SESSION_ID = <?= (int)$session['id'] ?>;
     var CSRF       = <?= json_encode($csrfToken) ?>;
-    var TASKS      = <?= json_encode($tasks, JSON_UNESCAPED_SLASHES) ?>;
+    var TASKS      = <?= json_encode($tasks, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
     var REMAINING  = <?= (int)$remaining ?>;
 
     var current   = 0;

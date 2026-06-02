@@ -213,7 +213,7 @@ if ($sessionId) {
     <script src="/public/js/interview_preview.js"></script>
     <script>
     (function () {
-        var TASKS = <?= json_encode($jsTasks, JSON_UNESCAPED_SLASHES) ?>;
+        var TASKS = <?= json_encode($jsTasks, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
         var CSRF  = <?= json_encode(csrf_token()) ?>;
         function esc(s){return String(s==null?'':s).replace(/[&<>]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c];});}
 
