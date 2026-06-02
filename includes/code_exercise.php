@@ -11,14 +11,19 @@ function render_code_exercise(array $exercise, ?array $submission = null): void 
     $langMap = ['html' => 'html', 'css' => 'css', 'javascript' => 'javascript', 'combined' => 'html'];
     $monacoLang = $langMap[$type] ?? 'html';
     $initialCode = $submission['submitted_code'] ?? $exercise['starter_code'] ?? '';
+    $mode = $exercise['mode'] ?? 'build';
+    $isDebug = $mode === 'debug';
 ?>
-<div class="code-exercise" data-exercise-id="<?= $exerciseId ?>" data-testid="code-exercise-<?= $exerciseId ?>">
+<div class="code-exercise<?= $isDebug ? ' code-exercise-debug' : '' ?>" data-exercise-id="<?= $exerciseId ?>" data-exercise-mode="<?= $mode ?>" data-testid="code-exercise-<?= $exerciseId ?>">
     <div class="code-exercise-header">
         <h4>
-            <i class="bi bi-code-slash me-2"></i>
+            <i class="bi bi-<?= $isDebug ? 'bug' : 'code-slash' ?> me-2"></i>
             <?= h($exercise['title']) ?>
         </h4>
         <div class="d-flex align-items-center gap-2">
+            <?php if ($isDebug): ?>
+            <span class="badge bg-danger"><i class="bi bi-bug-fill me-1"></i>Debug Challenge</span>
+            <?php endif; ?>
             <span class="badge <?= $exercise['difficulty'] === 'easy' ? 'bg-success' : ($exercise['difficulty'] === 'medium' ? 'bg-warning' : 'bg-danger') ?>">
                 <?= ucfirst($exercise['difficulty']) ?>
             </span>
@@ -31,9 +36,15 @@ function render_code_exercise(array $exercise, ?array $submission = null): void 
     </div>
     
     <div class="p-3 border-bottom" style="background: var(--bg);">
+        <?php if ($isDebug): ?>
+        <div class="debug-callout mb-3">
+            <i class="bi bi-bug-fill me-2"></i>
+            <span>This code is <strong>broken</strong>. Read the expected behaviour below, find the bugs in the editor, fix them, then <strong>Run</strong> to verify your fix in the preview.</span>
+        </div>
+        <?php endif; ?>
         <p class="mb-2"><?= h($exercise['description']) ?></p>
         <div class="small text-muted exercise-instructions">
-            <strong>Instructions:</strong><br>
+            <strong><?= $isDebug ? 'Expected behaviour (fix the code until all are true):' : 'Instructions:' ?></strong><br>
             <?= nl2br(h($exercise['instructions'])) ?>
         </div>
     </div>

@@ -400,6 +400,92 @@ function has_passed_qualifying_exam(int $userId): bool {
     return (bool)$stmt->fetch();
 }
 
+// ─── Coding Interview helpers ─────────────────────────────
+// The proctored coding + debugging interview is the final selection gate.
+// It unlocks only after the candidate has passed the qualifying (final) exam.
+const INTERVIEW_CODING_COUNT = 3;    // coding problems drawn per session
+const INTERVIEW_DEBUG_COUNT  = 10;   // debugging problems drawn per session
+const INTERVIEW_TIME_LIMIT   = 90;   // minutes
+
+function is_interview_unlocked(int $userId): bool {
+    return has_passed_qualifying_exam($userId);
+}
+
+/** The candidate's single interview session (latest), if any. */
+function get_interview_session_for_user(int $userId): ?array {
+    $stmt = db()->prepare('SELECT * FROM interview_sessions WHERE user_id = ? ORDER BY id DESC LIMIT 1');
+    $stmt->execute([$userId]);
+    return $stmt->fetch() ?: null;
+}
+
+function get_interview_session(int $sessionId): ?array {
+    $stmt = db()->prepare('SELECT * FROM interview_sessions WHERE id = ?');
+    $stmt->execute([$sessionId]);
+    return $stmt->fetch() ?: null;
+}
+
+function get_interview_exercise(int $id): ?array {
+    $stmt = db()->prepare('SELECT * FROM interview_exercises WHERE id = ?');
+    $stmt->execute([$id]);
+    return $stmt->fetch() ?: null;
+}
+
+/** Fetch the exercises for a session in the exact stored order. */
+function get_interview_exercises_in_order(array $orderedIds): array {
+    if (empty($orderedIds)) return [];
+    $place = implode(',', array_fill(0, count($orderedIds), '?'));
+    $stmt = db()->prepare("SELECT * FROM interview_exercises WHERE id IN ($place)");
+    $stmt->execute($orderedIds);
+    $byId = [];
+    foreach ($stmt->fetchAll() as $row) { $byId[$row['id']] = $row; }
+    $out = [];
+    foreach ($orderedIds as $id) { if (isset($byId[$id])) $out[] = $byId[$id]; }
+    return $out;
+}
+
+/** All saved answers for a session, keyed by exercise_id. */
+function get_interview_answers(int $sessionId): array {
+    $stmt = db()->prepare('SELECT * FROM interview_answers WHERE session_id = ?');
+    $stmt->execute([$sessionId]);
+    $out = [];
+    foreach ($stmt->fetchAll() as $row) { $out[(int)$row['exercise_id']] = $row; }
+    return $out;
+}
+
+function get_interview_events(int $sessionId): array {
+    $stmt = db()->prepare('SELECT * FROM interview_events WHERE session_id = ? ORDER BY created_at');
+    $stmt->execute([$sessionId]);
+    return $stmt->fetchAll();
+}
+
+function get_interview_proctor_images(int $sessionId): array {
+    $stmt = db()->prepare('SELECT * FROM interview_proctor_images WHERE session_id = ? ORDER BY captured_at');
+    $stmt->execute([$sessionId]);
+    return $stmt->fetchAll();
+}
+
+/**
+ * Public-safe copy of an exercise for the candidate's browser:
+ * strips the reference solution and all hidden (non-sample) test cases so
+ * answers can never leak to the candidate. Only sample cases are exposed.
+ */
+function interview_exercise_for_candidate(array $ex): array {
+    $tc = json_decode($ex['test_cases_json'] ?? '{}', true) ?: [];
+    $sampleCases = array_values(array_filter($tc['cases'] ?? [], fn($c) => !empty($c['sample'])));
+    return [
+        'id'            => (int)$ex['id'],
+        'kind'          => $ex['kind'],
+        'title'         => $ex['title'],
+        'prompt'        => $ex['prompt'],
+        'instructions'  => $ex['instructions'],
+        'entry'         => $tc['entry'] ?? '',
+        'sample_cases'  => $sampleCases,
+        'sample_total'  => count($sampleCases),
+        'difficulty'    => $ex['difficulty'],
+        'points'        => (int)$ex['points'],
+    ];
+}
+
 // ─── Final Exam helpers ───────────────────────────────────
 function get_final_exam_for_course(int $courseId): ?array {
     $stmt = db()->prepare('SELECT * FROM final_exams WHERE course_id = ? AND is_active = 1');

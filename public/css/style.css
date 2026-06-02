@@ -1242,6 +1242,25 @@ h6 { font-size: 1rem; font-weight: 600; }
     overflow: hidden;
 }
 
+.code-exercise-debug {
+    border-color: rgba(239,68,68,.45);
+}
+.code-exercise-debug .code-exercise-header {
+    background: rgba(239,68,68,.08);
+}
+.debug-callout {
+    display: flex;
+    align-items: flex-start;
+    gap: .25rem;
+    background: rgba(239,68,68,.1);
+    border-left: 3px solid #ef4444;
+    border-radius: var(--radius);
+    padding: .65rem .85rem;
+    font-size: .85rem;
+    line-height: 1.45;
+}
+.debug-callout .bi { color: #ef4444; margin-top: 2px; }
+
 .code-exercise-header {
     background: var(--bg);
     padding: 1rem 1.5rem;

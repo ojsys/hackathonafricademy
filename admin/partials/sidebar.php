@@ -31,6 +31,9 @@ $currentPage = basename($_SERVER['PHP_SELF']);
     <a href="/admin/qualifying_exam.php" class="<?= $currentPage === 'qualifying_exam.php' ? 'active' : '' ?>">
         <i class="bi bi-shield-check"></i> Final Exam
     </a>
+    <a href="/admin/interview_reviews.php" class="<?= $currentPage === 'interview_reviews.php' ? 'active' : '' ?>">
+        <i class="bi bi-terminal"></i> Coding Interviews
+    </a>
     <a href="/admin/proctor_images.php" class="<?= $currentPage === 'proctor_images.php' ? 'active' : '' ?>">
         <i class="bi bi-camera"></i> Proctor Images
     </a>

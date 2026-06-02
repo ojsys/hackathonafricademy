@@ -57,15 +57,17 @@ require_once __DIR__ . '/../includes/header.php';
     -webkit-background-clip: text; -webkit-text-fill-color: transparent;
     background-clip: text; margin-bottom: 0.4rem;
 }
-.cert-subtitle { color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.15em; margin-bottom: 1.5rem; }
+/* Certificate background is always dark — pin all text to explicit light
+   colors so it stays legible regardless of the site's light/dark theme. */
+.cert-subtitle { color: rgba(255,255,255,0.65); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.15em; margin-bottom: 1.5rem; }
 .cert-recipient { font-size: 2.2rem; font-weight: 700; font-family: var(--font-heading); color: #fff; margin-bottom: 0.4rem; }
 .cert-course { font-size: 1.15rem; color: var(--primary); font-weight: 600; margin-bottom: 1.5rem; }
-.cert-body-text { color: #a0a8b8; font-size: .9rem; margin-bottom: .2rem; }
+.cert-body-text { color: #c5cdd8; font-size: .9rem; margin-bottom: .2rem; }
 .cert-details { display: flex; justify-content: space-between; border-top: 1px solid rgba(248,181,38,0.25); padding-top: 1.25rem; margin-top: 1.5rem; }
 .cert-detail { text-align: center; }
-.cert-detail-label { font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.1em; }
-.cert-detail-value { font-size: 0.9rem; font-weight: 600; color: var(--text-primary); margin-top: 0.2rem; }
-.cert-id { position: absolute; bottom: 22px; right: 28px; font-family: var(--font-mono); font-size: 0.65rem; color: var(--text-muted); }
+.cert-detail-label { font-size: 0.65rem; color: rgba(255,255,255,0.6); text-transform: uppercase; letter-spacing: 0.1em; }
+.cert-detail-value { font-size: 0.9rem; font-weight: 600; color: #ffffff; margin-top: 0.2rem; }
+.cert-id { position: absolute; bottom: 22px; right: 28px; font-family: var(--font-mono); font-size: 0.65rem; color: rgba(255,255,255,0.45); }
 @media print {
     @page { size: A4 landscape; margin: 0; }
     body { background: #0D1117 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }

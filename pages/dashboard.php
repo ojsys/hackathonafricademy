@@ -8,6 +8,7 @@ $eligible = is_eligible($user['id']);
 $qualifyingExam = get_qualifying_exam();
 $qualifyingBest = get_best_qualifying_attempt($user['id']);
 $qualifyingPassed = has_passed_qualifying_exam($user['id']);
+$interviewSession = $qualifyingPassed ? get_interview_session_for_user($user['id']) : null;
 
 // Stats
 $totalLessons = 0;
@@ -221,6 +222,34 @@ require_once __DIR__ . '/../includes/header.php';
                        class="btn btn-sm w-100 <?= $eligible ? 'btn-primary' : 'btn-outline-secondary' ?>"
                        <?= !$eligible ? 'disabled' : '' ?>>
                         <?= $qualifyingPassed ? 'View Result' : ($qualifyingBest ? 'Retake Exam' : 'Start Exam') ?>
+                        <i class="bi bi-arrow-right ms-1"></i>
+                    </a>
+                </div>
+            </div>
+            <?php endif; ?>
+
+            <!-- Coding Interview card (unlocks after passing the final exam) -->
+            <?php if ($qualifyingPassed):
+                $ivStatus = $interviewSession['status'] ?? 'none';
+                $ivDecision = $interviewSession['review_decision'] ?? 'pending';
+            ?>
+            <div class="card mb-3" style="border-color:<?= $ivStatus === 'reviewed' && $ivDecision === 'selected' ? 'var(--success)' : 'var(--primary)' ?>">
+                <div class="card-body p-3">
+                    <h6 class="fw-700 mb-1"><i class="bi bi-terminal me-1" style="color:var(--primary)"></i>Coding Interview</h6>
+                    <?php if ($ivStatus === 'reviewed'): ?>
+                    <p class="small <?= $ivDecision === 'selected' ? 'text-success' : 'text-muted' ?> mb-2">
+                        <i class="bi bi-<?= $ivDecision === 'selected' ? 'trophy-fill' : 'check-circle' ?> me-1"></i>
+                        <?= $ivDecision === 'selected' ? 'Selected!' : 'Reviewed' ?>
+                    </p>
+                    <?php elseif ($ivStatus === 'submitted'): ?>
+                    <p class="small text-muted mb-2"><i class="bi bi-hourglass-split me-1"></i>Submitted — pending review</p>
+                    <?php elseif ($ivStatus === 'in_progress'): ?>
+                    <p class="small text-warning mb-2"><i class="bi bi-exclamation-triangle me-1"></i>In progress — resume now</p>
+                    <?php else: ?>
+                    <p class="small text-muted mb-2">Final step! Take the proctored coding interview.</p>
+                    <?php endif; ?>
+                    <a href="/pages/interview.php" class="btn btn-sm btn-primary w-100">
+                        <?= $ivStatus === 'in_progress' ? 'Resume Interview' : ($ivStatus === 'none' ? 'Start Interview' : 'View Status') ?>
                         <i class="bi bi-arrow-right ms-1"></i>
                     </a>
                 </div>
