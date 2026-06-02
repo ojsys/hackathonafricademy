@@ -9,6 +9,7 @@ $qualifyingExam = get_qualifying_exam();
 $qualifyingBest = get_best_qualifying_attempt($user['id']);
 $qualifyingPassed = has_passed_qualifying_exam($user['id']);
 $interviewSession = $qualifyingPassed ? get_interview_session_for_user($user['id']) : null;
+$interviewOpen = $qualifyingPassed ? is_interview_open() : false;
 
 // Stats
 $totalLessons = 0;
@@ -245,11 +246,13 @@ require_once __DIR__ . '/../includes/header.php';
                     <p class="small text-muted mb-2"><i class="bi bi-hourglass-split me-1"></i>Submitted — pending review</p>
                     <?php elseif ($ivStatus === 'in_progress'): ?>
                     <p class="small text-warning mb-2"><i class="bi bi-exclamation-triangle me-1"></i>In progress — resume now</p>
+                    <?php elseif (!$interviewOpen): ?>
+                    <p class="small text-muted mb-2"><i class="bi bi-hourglass-split me-1"></i>Not open yet — check back soon</p>
                     <?php else: ?>
                     <p class="small text-muted mb-2">Final step! Take the proctored coding interview.</p>
                     <?php endif; ?>
-                    <a href="/pages/interview.php" class="btn btn-sm btn-primary w-100">
-                        <?= $ivStatus === 'in_progress' ? 'Resume Interview' : ($ivStatus === 'none' ? 'Start Interview' : 'View Status') ?>
+                    <a href="/pages/interview.php" class="btn btn-sm w-100 <?= ($ivStatus === 'none' && !$interviewOpen) ? 'btn-outline-secondary' : 'btn-primary' ?>">
+                        <?= $ivStatus === 'in_progress' ? 'Resume Interview' : ($ivStatus === 'none' ? ($interviewOpen ? 'Start Interview' : 'View Status') : 'View Status') ?>
                         <i class="bi bi-arrow-right ms-1"></i>
                     </a>
                 </div>

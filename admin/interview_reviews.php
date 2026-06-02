@@ -231,7 +231,22 @@ require_once __DIR__ . '/../includes/header.php';
 <div class="admin-layout">
     <?php require __DIR__ . '/partials/sidebar.php'; ?>
     <div class="admin-content">
-        <h1 class="admin-page-title mb-4">Interview Reviews</h1>
+        <?php $interviewOpen = is_interview_open(); ?>
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-4">
+            <h1 class="admin-page-title mb-0">Interview Reviews</h1>
+            <div class="d-flex align-items-center gap-2">
+                <span class="badge <?= $interviewOpen ? 'bg-success' : 'bg-danger' ?>"><?= $interviewOpen ? 'OPEN' : 'CLOSED' ?></span>
+                <form method="POST" action="/actions/admin/toggle_interview.php" class="m-0">
+                    <?= csrf_field() ?>
+                    <input type="hidden" name="open" value="<?= $interviewOpen ? '0' : '1' ?>">
+                    <input type="hidden" name="redirect" value="/admin/interview_reviews.php">
+                    <button type="submit" class="btn btn-sm <?= $interviewOpen ? 'btn-outline-danger' : 'btn-success' ?>"
+                        onclick="return confirm('<?= $interviewOpen ? 'Close the interview for all candidates?' : 'Open the interview for all qualified candidates?' ?>')">
+                        <i class="bi bi-<?= $interviewOpen ? 'stop' : 'play' ?>-circle me-1"></i><?= $interviewOpen ? 'Stop' : 'Start' ?> Interview
+                    </button>
+                </form>
+            </div>
+        </div>
         <?php render_flash(); ?>
 
         <?php if (empty($rows)): ?>

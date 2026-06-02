@@ -423,8 +423,33 @@ foreach ($problems as $p) {
     $p['kind'] === 'coding' ? $coding++ : $debugging++;
 }
 
+// ── Difficulty policy ────────────────────────────────────────────────────────
+// Keep the interview approachable: no 'hard' questions, and a pool weighted so
+// each session lands ~70% easy / 30% medium. Promote the simplest one-line
+// fixes to 'easy'; demote the trickiest to 'medium'. Single source of truth.
+$promoteEasy = [
+    'Fix: Capitalize First', 'Fix: Range 1..n', 'Fix: Repeat String',
+    'Fix: Clamp a Value', 'Fix: Fahrenheit to Celsius', 'Fix: Grade Letter',
+    'Fix: Count a Character', 'Fix: Percentage',
+];
+$demoteMedium = [
+    'Fix: Prime Check', 'Fix: Word Count', 'Fix: Remove Duplicates',
+    'Fix: Second Largest', 'Nth Fibonacci',
+];
+$setDiff = $pdo->prepare('UPDATE interview_exercises SET difficulty = ? WHERE title = ?');
+foreach ($promoteEasy  as $t) { $setDiff->execute(['easy', $t]); }
+foreach ($demoteMedium as $t) { $setDiff->execute(['medium', $t]); }
+// Safety net: anything still 'hard' becomes 'medium'.
+$pdo->exec("UPDATE interview_exercises SET difficulty = 'medium' WHERE difficulty = 'hard'");
+
+$diffCounts = [];
+foreach ($pdo->query("SELECT difficulty, COUNT(*) c FROM interview_exercises GROUP BY difficulty")->fetchAll() as $r) {
+    $diffCounts[$r['difficulty']] = (int)$r['c'];
+}
+
 echo "<p>✅ Seeded pool: <strong>{$coding}</strong> coding + <strong>{$debugging}</strong> debugging problems</p>";
-echo "<p>Each candidate session draws " . 3 . " coding + " . 10 . " debugging at random and shuffles them.</p>";
+echo "<p>Difficulty: <strong>" . ($diffCounts['easy'] ?? 0) . "</strong> easy, <strong>" . ($diffCounts['medium'] ?? 0) . "</strong> medium, <strong>" . ($diffCounts['hard'] ?? 0) . "</strong> hard</p>";
+echo "<p>Each session draws 2 easy + 1 medium coding and 7 easy + 3 medium debugging — 9 easy / 4 medium (~70/30), shuffled.</p>";
 echo "<hr><p><strong>Done.</strong></p>";
 echo '<p style="color:#c00">⚠ Delete this file (database/setup_interview.php) after running in production.</p>';
 echo '</body>';

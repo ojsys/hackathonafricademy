@@ -7,6 +7,7 @@ $user = current_user();
 $unlocked = is_interview_unlocked($user['id']);
 $session  = get_interview_session_for_user($user['id']);
 $isAdmin  = is_admin();
+$open     = is_interview_open();
 
 require_once __DIR__ . '/../includes/header.php';
 ?>
@@ -82,7 +83,22 @@ require_once __DIR__ . '/../includes/header.php';
         </div>
     </div>
 
+    <?php elseif (!$open && !$isAdmin): ?>
+    <div class="row justify-content-center">
+        <div class="col-lg-7">
+            <div class="card p-4 text-center">
+                <i class="bi bi-hourglass-split mb-3" style="font-size:3rem;color:var(--primary)"></i>
+                <h4 class="fw-700 mb-2">The Coding Interview Isn't Open Yet</h4>
+                <p class="text-muted mb-0">You're qualified to take it. The interview will become available once the HackathonAfrica team opens this stage — you'll be able to start it from here. Please check back soon.</p>
+                <a href="/pages/dashboard.php" class="btn btn-outline-primary mt-4 align-self-center">Back to Dashboard</a>
+            </div>
+        </div>
+    </div>
+
     <?php else: ?>
+    <?php if ($isAdmin && !$open): ?>
+    <div class="alert alert-info"><i class="bi bi-eye me-1"></i><strong>Admin:</strong> the interview is currently <strong>closed</strong> for candidates. You can still start one to test. Open it for everyone from the Admin Dashboard.</div>
+    <?php endif; ?>
     <div class="row justify-content-center g-4">
         <div class="col-lg-7">
             <div class="card">

@@ -18,6 +18,15 @@ $passRate = db()->query('SELECT ROUND(AVG(passed) * 100) AS rate FROM quiz_attem
 $eligibleCount = db()->query('SELECT COUNT(*) FROM candidate_reviews WHERE eligibility_status = "eligible"')->fetchColumn() ?: 0;
 $pendingReview = db()->query('SELECT COUNT(*) FROM candidate_reviews WHERE eligibility_status = "needs_review"')->fetchColumn() ?: 0;
 
+// Coding interview state (table may not exist until setup has been run)
+$interviewOpen = is_interview_open();
+$ivInProgress  = 0;
+$ivPending     = 0;
+try {
+    $ivInProgress = (int) db()->query("SELECT COUNT(*) FROM interview_sessions WHERE status = 'in_progress'")->fetchColumn();
+    $ivPending    = (int) db()->query("SELECT COUNT(*) FROM interview_sessions WHERE status = 'submitted'")->fetchColumn();
+} catch (\PDOException $e) { /* interview not set up yet */ }
+
 require_once __DIR__ . '/../includes/header.php';
 ?>
 
@@ -28,6 +37,52 @@ require_once __DIR__ . '/../includes/header.php';
         <h1 class="admin-page-title">Admin Dashboard</h1>
 
         <?php render_flash(); ?>
+
+        <!-- Coding Interview control -->
+        <div class="card mb-4" style="border-left:3px solid <?= $interviewOpen ? 'var(--success)' : 'var(--danger)' ?>">
+            <div class="card-body d-flex flex-wrap align-items-center justify-content-between gap-3">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="stat-icon <?= $interviewOpen ? 'green' : 'orange' ?>"><i class="bi bi-terminal"></i></div>
+                    <div>
+                        <h5 class="fw-700 mb-1">
+                            Coding Interview
+                            <span class="badge ms-1 <?= $interviewOpen ? 'bg-success' : 'bg-danger' ?>">
+                                <?= $interviewOpen ? 'OPEN' : 'CLOSED' ?>
+                            </span>
+                        </h5>
+                        <p class="small text-muted mb-0">
+                            <?= $interviewOpen
+                                ? 'Qualified candidates can start the proctored interview.'
+                                : 'Disabled for all candidates until you open it.' ?>
+                            <?php if ($ivInProgress || $ivPending): ?>
+                            &nbsp;·&nbsp; <?= $ivInProgress ?> in progress, <?= $ivPending ?> awaiting review.
+                            <?php endif; ?>
+                        </p>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <a href="/admin/interview_reviews.php" class="btn btn-outline-secondary btn-sm">
+                        <i class="bi bi-list-check me-1"></i>Reviews
+                    </a>
+                    <form method="POST" action="/actions/admin/toggle_interview.php" class="m-0">
+                        <?= csrf_field() ?>
+                        <input type="hidden" name="open" value="<?= $interviewOpen ? '0' : '1' ?>">
+                        <input type="hidden" name="redirect" value="/admin/index.php">
+                        <?php if ($interviewOpen): ?>
+                        <button type="submit" class="btn btn-danger btn-sm"
+                            onclick="return confirm('Close the interview? Candidates will no longer be able to start it. In-progress sessions are not affected.')">
+                            <i class="bi bi-stop-circle me-1"></i>Stop Interview
+                        </button>
+                        <?php else: ?>
+                        <button type="submit" class="btn btn-success btn-sm"
+                            onclick="return confirm('Open the coding interview for all qualified candidates now?')">
+                            <i class="bi bi-play-circle me-1"></i>Start Interview
+                        </button>
+                        <?php endif; ?>
+                    </form>
+                </div>
+            </div>
+        </div>
 
         <!-- Stat cards -->
         <div class="row g-3 mb-4">

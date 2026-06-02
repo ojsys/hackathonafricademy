@@ -411,6 +411,14 @@ function is_interview_unlocked(int $userId): bool {
     return has_passed_qualifying_exam($userId);
 }
 
+/** Global switch: the interview is closed until an admin opens it. Default closed. */
+function is_interview_open(): bool {
+    return get_setting('interview_open', '0') === '1';
+}
+function set_interview_open(bool $open): void {
+    set_setting('interview_open', $open ? '1' : '0');
+}
+
 /** The candidate's single interview session (latest), if any. */
 function get_interview_session_for_user(int $userId): ?array {
     $stmt = db()->prepare('SELECT * FROM interview_sessions WHERE user_id = ? ORDER BY id DESC LIMIT 1');
