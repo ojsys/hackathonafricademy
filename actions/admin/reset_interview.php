@@ -19,17 +19,8 @@ if (!$session) {
     exit;
 }
 
-// Delete proctor snapshot files (constrained to the public image directory).
-$publicBase = realpath(__DIR__ . '/../../public');
-foreach (get_interview_proctor_images($sessionId) as $img) {
-    $full = realpath($publicBase . '/' . $img['image_path']);
-    if ($full && str_starts_with($full, $publicBase . DIRECTORY_SEPARATOR) && is_file($full)) {
-        @unlink($full);
-    }
-}
-
-// Delete the session — child rows cascade via ON DELETE CASCADE.
-db()->prepare('DELETE FROM interview_sessions WHERE id = ?')->execute([$sessionId]);
+// Delete the session, its cascading rows, and its proctor image files.
+interview_delete_session($sessionId);
 
 set_flash('success', 'Interview deleted. The candidate can now take the interview again.');
 header('Location: /admin/interview_reviews.php');

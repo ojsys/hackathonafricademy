@@ -20,19 +20,30 @@ if ($sessionId) {
     $events     = get_interview_events($sessionId);
     $images     = get_interview_proctor_images($sessionId);
 
+    // Saved "form → database" entries for this session, grouped by exercise.
+    $sandboxByExercise = [];
+    $sbStmt = db()->prepare('SELECT exercise_id, payload_json, created_at FROM interview_sandbox_entries WHERE session_id = ? ORDER BY id');
+    $sbStmt->execute([$sessionId]);
+    foreach ($sbStmt->fetchAll() as $r) {
+        $sandboxByExercise[(int)$r['exercise_id']][] = json_decode($r['payload_json'], true) ?: [];
+    }
+
     // Build the JS payload: full test cases (sample + hidden) + candidate code.
     $jsTasks = [];
     foreach ($exercises as $i => $ex) {
         $tc  = json_decode($ex['test_cases_json'] ?? '{}', true) ?: [];
         $ans = $answers[(int)$ex['id']] ?? null;
         $jsTasks[] = [
-            'exercise_id' => (int)$ex['id'],
-            'kind'        => $ex['kind'],
-            'title'       => $ex['title'],
-            'entry'       => $tc['entry'] ?? '',
-            'cases'       => $tc['cases'] ?? [],
-            'points'      => (int)$ex['points'],
-            'code'        => $ans['submitted_code'] ?? $ex['starter_code'],
+            'exercise_id'   => (int)$ex['id'],
+            'kind'          => $ex['kind'],
+            'category'      => $ex['category'],
+            'exercise_type' => $ex['exercise_type'] ?? 'javascript',
+            'title'         => $ex['title'],
+            'instructions'  => $ex['instructions'],
+            'entry'         => $tc['entry'] ?? '',
+            'cases'         => $tc['cases'] ?? [],
+            'points'        => (int)$ex['points'],
+            'code'          => $ans['submitted_code'] ?? $ex['starter_code'],
         ];
     }
 
@@ -46,6 +57,9 @@ if ($sessionId) {
                 <a href="/admin/interview_reviews.php" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>All Reviews</a>
                 <h1 class="admin-page-title mb-0">Interview — <?= h($candidate['name']) ?></h1>
                 <div class="d-flex align-items-center gap-2 ms-auto">
+                    <?php if (!empty($session['is_test'])): ?>
+                    <span class="badge bg-secondary"><i class="bi bi-flask me-1"></i>TEST RUN</span>
+                    <?php endif; ?>
                     <span class="badge-chip <?= $session['status'] === 'reviewed' ? 'chip-published' : 'chip-draft' ?>">
                         <?= $session['status'] === 'reviewed' ? 'Reviewed — ' . ucfirst($session['review_decision']) : 'Pending review' ?>
                     </span>
@@ -121,18 +135,35 @@ if ($sessionId) {
 
                 <?php foreach ($jsTasks as $i => $t):
                     $ans = $answers[$t['exercise_id']] ?? null; ?>
+                <?php
+                    $kindBadge = $t['kind'] === 'coding' ? ['bg-info-subtle text-info-emphasis', 'Coding']
+                               : ($t['kind'] === 'debugging' ? ['bg-danger-subtle text-danger-emphasis', 'Debug']
+                               : ['bg-success-subtle text-success-emphasis', 'Applied']);
+                    $entries = $sandboxByExercise[$t['exercise_id']] ?? [];
+                ?>
                 <div class="card mb-3" data-task="<?= $i ?>">
                     <div class="card-header d-flex align-items-center justify-content-between">
                         <div>
-                            <span class="badge <?= $t['kind'] === 'coding' ? 'bg-info-subtle text-info-emphasis' : 'bg-danger-subtle text-danger-emphasis' ?>">
-                                <?= $t['kind'] === 'coding' ? 'Coding' : 'Debug' ?>
-                            </span>
+                            <span class="badge <?= $kindBadge[0] ?>"><?= $kindBadge[1] ?></span>
                             <strong class="ms-2"><?= h($t['title']) ?></strong>
                         </div>
-                        <div class="small text-muted" id="auto-result-<?= $i ?>">Not run</div>
+                        <div class="small text-muted" id="auto-result-<?= $i ?>"><?= $t['kind'] === 'project' ? 'Click to preview' : 'Not run' ?></div>
                     </div>
                     <div class="card-body">
                         <pre class="iv-code-view"><code><?= h($t['code']) ?></code></pre>
+                        <?php if ($t['kind'] === 'project'): ?>
+                        <div class="iv-preview-label mt-2">Rendered preview</div>
+                        <iframe class="iv-preview" id="prev-<?= $i ?>" title="preview"></iframe>
+                        <?php if ($t['category'] === 'form_db'): ?>
+                        <div class="iv-preview-label mt-2">Saved to database (<?= count($entries) ?> row<?= count($entries) === 1 ? '' : 's' ?>)</div>
+                        <?php if ($entries): ?>
+                        <div class="iv-code-view" style="max-height:160px"><?php foreach ($entries as $row): ?><?= h(json_encode($row, JSON_UNESCAPED_SLASHES)) ?>
+<?php endforeach; ?></div>
+                        <?php else: ?>
+                        <div class="text-muted small">No rows were saved by the candidate.</div>
+                        <?php endif; ?>
+                        <?php endif; ?>
+                        <?php endif; ?>
                         <div class="row g-2 mt-2 align-items-end">
                             <div class="col-auto">
                                 <label class="small text-muted d-block">Score (0–<?= $t['points'] ?>)</label>
@@ -179,13 +210,43 @@ if ($sessionId) {
     </style>
 
     <script src="/public/js/interview_harness.js"></script>
+    <script src="/public/js/interview_preview.js"></script>
     <script>
     (function () {
         var TASKS = <?= json_encode($jsTasks, JSON_UNESCAPED_SLASHES) ?>;
+        var CSRF  = <?= json_encode(csrf_token()) ?>;
         function esc(s){return String(s==null?'':s).replace(/[&<>]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c];});}
+
+        function reqList(t){ return (t.instructions||'').split('\n').map(function(l){return l.trim();})
+            .filter(function(l){return /^\d+\./.test(l);}).map(function(l){return l.replace(/^\d+\.\s*/,'');}); }
+
+        // Applied tasks: render the candidate's work + a requirement checklist.
+        function runProject(i) {
+            var t = TASKS[i];
+            var summ = document.getElementById('auto-result-' + i);
+            var detail = document.getElementById('result-detail-' + i);
+            var iframe = document.getElementById('prev-' + i);
+            try {
+                var html = window.interviewBuildPreview(t.code, t.exercise_type, { token: CSRF, exerciseId: t.exercise_id });
+                iframe.src = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
+            } catch (e) {}
+            var reqs = reqList(t);
+            var results = window.interviewCheckRequirements(t.code, reqs);
+            var met = results.filter(function (r){return r.met;}).length;
+            summ.innerHTML = '<span class="fw-700 ' + (met===reqs.length?'text-success':'text-muted') + '">' + met + ' / ' + reqs.length + ' reqs</span>';
+            document.getElementById('passed-' + i).value = met;
+            document.getElementById('total-' + i).value = reqs.length;
+            var scoreEl = document.getElementById('score-' + i);
+            if (!scoreEl.value && reqs.length) scoreEl.value = Math.round(met / reqs.length * t.points);
+            detail.innerHTML = results.map(function (r) {
+                return '<div class="iv-res-row ' + (r.met?'pass':'fail') + '"><i class="bi bi-' + (r.met?'check-circle-fill text-success':'circle text-muted') + ' me-1"></i>' + esc(r.text) + '</div>';
+            }).join('') + '<div class="iv-res-info mt-1"><i class="bi bi-info-circle me-1"></i>Checklist is a guide — score the live preview and the saved data above.</div>';
+            return Promise.resolve();
+        }
 
         function runTask(i) {
             var t = TASKS[i];
+            if (t.kind === 'project') return runProject(i);
             var summ = document.getElementById('auto-result-' + i);
             var detail = document.getElementById('result-detail-' + i);
             if (!t.cases.length) { summ.textContent = 'No tests'; return Promise.resolve(); }
@@ -226,14 +287,24 @@ if ($sessionId) {
 }
 
 /* ───────────────────────── List / queue ───────────────────────── */
+// Real candidate submissions (test runs are excluded — listed separately below).
 $rows = db()->query("
     SELECT s.*, u.name, u.email,
         (SELECT COUNT(*) FROM interview_events e WHERE e.session_id = s.id AND e.event_type != 'camera_granted') AS flags,
         (SELECT COUNT(*) FROM interview_proctor_images p WHERE p.session_id = s.id) AS images
     FROM interview_sessions s
     JOIN users u ON u.id = s.user_id
-    WHERE s.status IN ('submitted','reviewed')
+    WHERE s.status IN ('submitted','reviewed') AND s.is_test = 0
     ORDER BY (s.status = 'submitted') DESC, s.submitted_at DESC
+")->fetchAll();
+
+// Admin test runs (any status) — separate so they never look like candidates.
+$testRows = db()->query("
+    SELECT s.*, u.name, u.email
+    FROM interview_sessions s
+    JOIN users u ON u.id = s.user_id
+    WHERE s.is_test = 1
+    ORDER BY s.started_at DESC
 ")->fetchAll();
 
 require_once __DIR__ . '/../includes/header.php';
@@ -246,6 +317,13 @@ require_once __DIR__ . '/../includes/header.php';
             <h1 class="admin-page-title mb-0">Interview Reviews</h1>
             <div class="d-flex align-items-center gap-2">
                 <span class="badge <?= $interviewOpen ? 'bg-success' : 'bg-danger' ?>"><?= $interviewOpen ? 'OPEN' : 'CLOSED' ?></span>
+                <form method="POST" action="/actions/admin/test_interview.php" class="m-0"
+                      onsubmit="return confirm('Start a test run of the interview as yourself? This does NOT open it for candidates, and any previous test run of yours will be cleared.');">
+                    <?= csrf_field() ?>
+                    <button type="submit" class="btn btn-sm btn-outline-primary">
+                        <i class="bi bi-play-btn me-1"></i>Test Interview
+                    </button>
+                </form>
                 <form method="POST" action="/actions/admin/toggle_interview.php" class="m-0">
                     <?= csrf_field() ?>
                     <input type="hidden" name="open" value="<?= $interviewOpen ? '0' : '1' ?>">
@@ -291,6 +369,52 @@ require_once __DIR__ . '/../includes/header.php';
                                         <?= csrf_field() ?>
                                         <input type="hidden" name="session_id" value="<?= (int)$r['id'] ?>">
                                         <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete &amp; reset"><i class="bi bi-trash"></i></button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <?php endif; ?>
+
+        <?php if (!empty($testRows)): ?>
+        <div class="card mt-4" style="border-style:dashed">
+            <div class="card-header d-flex align-items-center gap-2">
+                <i class="bi bi-flask"></i><strong>Admin Test Runs</strong>
+                <span class="text-muted small">— not counted as candidates</span>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead><tr><th>Admin</th><th>Started</th><th>Status</th><th></th></tr></thead>
+                    <tbody>
+                        <?php foreach ($testRows as $r): ?>
+                        <tr>
+                            <td><div class="fw-600"><?= h($r['name']) ?> <span class="badge bg-secondary ms-1">TEST</span></div><div class="small text-muted"><?= h($r['email']) ?></div></td>
+                            <td class="small text-muted"><?= date('M j, Y H:i', strtotime($r['started_at'])) ?></td>
+                            <td>
+                                <?php if ($r['status'] === 'in_progress'): ?>
+                                <span class="badge-chip chip-draft">In progress</span>
+                                <?php elseif ($r['status'] === 'reviewed'): ?>
+                                <span class="badge-chip chip-published"><?= ucfirst($r['review_decision']) ?></span>
+                                <?php else: ?>
+                                <span class="badge-chip chip-draft">Submitted</span>
+                                <?php endif; ?>
+                            </td>
+                            <td>
+                                <div class="d-flex gap-1 justify-content-end">
+                                    <?php if ($r['status'] === 'in_progress' && (int)$r['user_id'] === (int)current_user()['id']): ?>
+                                    <a href="/pages/interview_take.php" class="btn btn-sm btn-outline-warning"><i class="bi bi-arrow-right-circle me-1"></i>Resume</a>
+                                    <?php elseif ($r['status'] !== 'in_progress'): ?>
+                                    <a href="/admin/interview_reviews.php?session_id=<?= (int)$r['id'] ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-search me-1"></i>Review</a>
+                                    <?php endif; ?>
+                                    <form method="POST" action="/actions/admin/reset_interview.php" class="m-0"
+                                          onsubmit="return confirm('Delete this test run?');">
+                                        <?= csrf_field() ?>
+                                        <input type="hidden" name="session_id" value="<?= (int)$r['id'] ?>">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete"><i class="bi bi-trash"></i></button>
                                     </form>
                                 </div>
                             </td>

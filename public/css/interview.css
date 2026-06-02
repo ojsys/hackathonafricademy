@@ -97,6 +97,20 @@
 .iv-res-row.pass { border-left: 3px solid #22c55e; }
 .iv-res-row.fail { border-left: 3px solid var(--danger); }
 
+/* Applied-task note + live preview */
+.iv-applied-note {
+    background: rgba(34,197,94,.1); border-left: 3px solid #22c55e;
+    border-radius: var(--radius); padding: 0.5rem 0.7rem; margin-bottom: 0.7rem;
+    font-size: 0.82rem;
+}
+.iv-applied-note .bi { color: #22c55e; }
+.iv-preview-wrap { padding: 0 1.25rem 1rem; }
+.iv-preview-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: .08em; color: var(--text-muted); margin: 0.25rem 0; }
+.iv-preview {
+    width: 100%; height: 300px; background: #fff;
+    border: 1px solid var(--border); border-radius: var(--radius);
+}
+
 /* Proctor widget */
 .iv-proctor {
     position: fixed; bottom: 1.1rem; right: 1.1rem; z-index: 1050;

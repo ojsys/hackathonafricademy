@@ -403,9 +403,11 @@ function has_passed_qualifying_exam(int $userId): bool {
 // ─── Coding Interview helpers ─────────────────────────────
 // The proctored coding + debugging interview is the final selection gate.
 // It unlocks only after the candidate has passed the qualifying (final) exam.
-const INTERVIEW_CODING_COUNT = 3;    // coding problems drawn per session
-const INTERVIEW_DEBUG_COUNT  = 10;   // debugging problems drawn per session
+const INTERVIEW_CODING_COUNT = 2;    // algorithmic coding problems per session
+const INTERVIEW_DEBUG_COUNT  = 5;    // debugging problems per session
 const INTERVIEW_TIME_LIMIT   = 90;   // minutes
+// Applied/project section: one task drawn from each category (relatable web work).
+const INTERVIEW_PROJECT_CATEGORIES = ['form_db', 'layout', 'dom', 'fetch'];
 
 function is_interview_unlocked(int $userId): bool {
     return has_passed_qualifying_exam($userId);
@@ -483,6 +485,8 @@ function interview_exercise_for_candidate(array $ex): array {
     return [
         'id'            => (int)$ex['id'],
         'kind'          => $ex['kind'],
+        'category'      => $ex['category'] ?? null,
+        'exercise_type' => $ex['exercise_type'] ?? 'javascript',
         'title'         => $ex['title'],
         'prompt'        => $ex['prompt'],
         'instructions'  => $ex['instructions'],
@@ -492,6 +496,81 @@ function interview_exercise_for_candidate(array $ex): array {
         'difficulty'    => $ex['difficulty'],
         'points'        => (int)$ex['points'],
     ];
+}
+
+/**
+ * Build a randomized question set for one interview session:
+ *   2 coding (1 easy + 1 medium), 5 debugging (4 easy + 1 medium),
+ *   and 1 applied task from each category. Returns shuffled exercise ids,
+ *   or null if the pool is not fully configured.
+ */
+function interview_build_question_set(): ?array {
+    $byDiff = function (string $kind, string $diff, int $n): array {
+        $stmt = db()->prepare('SELECT id FROM interview_exercises WHERE kind = ? AND difficulty = ? AND is_active = 1');
+        $stmt->execute([$kind, $diff]);
+        $ids = array_map('intval', array_column($stmt->fetchAll(), 'id'));
+        shuffle($ids);
+        return array_slice($ids, 0, $n);
+    };
+    $set = function (string $kind, int $easyN, int $medN, int $total) use ($byDiff): array {
+        $picked = array_merge($byDiff($kind, 'easy', $easyN), $byDiff($kind, 'medium', $medN));
+        if (count($picked) < $total) {
+            $stmt = db()->prepare('SELECT id FROM interview_exercises WHERE kind = ? AND is_active = 1');
+            $stmt->execute([$kind]);
+            $rest = array_values(array_diff(array_map('intval', array_column($stmt->fetchAll(), 'id')), $picked));
+            shuffle($rest);
+            $picked = array_merge($picked, array_slice($rest, 0, $total - count($picked)));
+        }
+        return array_slice($picked, 0, $total);
+    };
+
+    $coding = $set('coding', 1, 1, INTERVIEW_CODING_COUNT);
+    $debug  = $set('debugging', 4, 1, INTERVIEW_DEBUG_COUNT);
+
+    $projects = [];
+    foreach (INTERVIEW_PROJECT_CATEGORIES as $cat) {
+        $stmt = db()->prepare("SELECT id FROM interview_exercises WHERE kind = 'project' AND category = ? AND is_active = 1");
+        $stmt->execute([$cat]);
+        $catIds = array_map('intval', array_column($stmt->fetchAll(), 'id'));
+        if ($catIds) { shuffle($catIds); $projects[] = $catIds[0]; }
+    }
+
+    if (count($coding) < INTERVIEW_CODING_COUNT
+        || count($debug) < INTERVIEW_DEBUG_COUNT
+        || count($projects) < count(INTERVIEW_PROJECT_CATEGORIES)) {
+        return null;
+    }
+
+    $selected = array_merge($coding, $debug, $projects);
+    shuffle($selected);
+    return $selected;
+}
+
+/** Create an interview session for a user from a question set; returns the id. */
+function interview_create_session(int $userId, array $selected, bool $isTest = false): int {
+    $place    = implode(',', array_fill(0, count($selected), '?'));
+    $ptsStmt  = db()->prepare("SELECT COALESCE(SUM(points),0) FROM interview_exercises WHERE id IN ($place)");
+    $ptsStmt->execute($selected);
+    $maxPoints = (int)$ptsStmt->fetchColumn();
+
+    $stmt = db()->prepare(
+        'INSERT INTO interview_sessions (user_id, status, exercise_ids_json, time_limit, max_points, is_test, started_at)
+         VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)'
+    );
+    $stmt->execute([$userId, 'in_progress', json_encode($selected), INTERVIEW_TIME_LIMIT, $maxPoints, $isTest ? 1 : 0]);
+    return (int)db()->lastInsertId();
+}
+
+/** Delete a session, its cascading rows, and its proctor image files from disk. */
+function interview_delete_session(int $sessionId): void {
+    $publicBase = realpath(__DIR__ . '/../public');
+    foreach (get_interview_proctor_images($sessionId) as $img) {
+        $full = $publicBase ? realpath($publicBase . '/' . $img['image_path']) : false;
+        if ($full && str_starts_with($full, $publicBase . DIRECTORY_SEPARATOR) && is_file($full)) {
+            @unlink($full);
+        }
+    }
+    db()->prepare('DELETE FROM interview_sessions WHERE id = ?')->execute([$sessionId]);
 }
 
 // ─── Final Exam helpers ───────────────────────────────────

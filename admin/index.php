@@ -64,6 +64,13 @@ require_once __DIR__ . '/../includes/header.php';
                     <a href="/admin/interview_reviews.php" class="btn btn-outline-secondary btn-sm">
                         <i class="bi bi-list-check me-1"></i>Reviews
                     </a>
+                    <form method="POST" action="/actions/admin/test_interview.php" class="m-0"
+                          onsubmit="return confirm('Start a test run of the interview as yourself? This does NOT open it for candidates, and any previous test run of yours will be cleared.');">
+                        <?= csrf_field() ?>
+                        <button type="submit" class="btn btn-outline-primary btn-sm">
+                            <i class="bi bi-play-btn me-1"></i>Test Interview
+                        </button>
+                    </form>
                     <form method="POST" action="/actions/admin/toggle_interview.php" class="m-0">
                         <?= csrf_field() ?>
                         <input type="hidden" name="open" value="<?= $interviewOpen ? '0' : '1' ?>">

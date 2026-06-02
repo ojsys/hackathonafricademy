@@ -26,22 +26,30 @@ echo '<body style="font-family:system-ui;max-width:760px;margin:2rem auto;line-h
 echo '<h2>Coding Interview Setup</h2>';
 
 // ── Schema ───────────────────────────────────────────────────────────────────
-$pdo->exec("CREATE TABLE IF NOT EXISTS interview_exercises (
+// interview_exercises is rebuilt below (DROP + CREATE) so schema upgrades —
+// e.g. the 'project' kind and the exercise_type / category columns — always
+// take effect. Pre-launch this is safe; the pool is re-seeded each run.
+$pdo->exec('PRAGMA foreign_keys = OFF');
+$pdo->exec('DROP TABLE IF EXISTS interview_exercises');
+$pdo->exec("CREATE TABLE interview_exercises (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    kind TEXT NOT NULL CHECK(kind IN ('coding','debugging')),
+    kind TEXT NOT NULL CHECK(kind IN ('coding','debugging','project')),
+    category TEXT,
     title TEXT NOT NULL,
     prompt TEXT NOT NULL,
     instructions TEXT,
     language TEXT NOT NULL DEFAULT 'javascript',
-    entry_function TEXT NOT NULL,
+    exercise_type TEXT NOT NULL DEFAULT 'javascript',
+    entry_function TEXT NOT NULL DEFAULT '',
     starter_code TEXT NOT NULL,
     reference_solution TEXT,
-    test_cases_json TEXT NOT NULL,
+    test_cases_json TEXT NOT NULL DEFAULT '{}',
     difficulty TEXT NOT NULL DEFAULT 'medium',
     points INTEGER NOT NULL DEFAULT 10,
     is_active INTEGER NOT NULL DEFAULT 1,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 )");
+$pdo->exec('PRAGMA foreign_keys = ON');
 
 $pdo->exec("CREATE TABLE IF NOT EXISTS interview_sessions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -55,11 +63,17 @@ $pdo->exec("CREATE TABLE IF NOT EXISTS interview_sessions (
     reviewer_id INTEGER,
     reviewer_notes TEXT,
     reviewed_at DATETIME,
+    is_test INTEGER NOT NULL DEFAULT 0,
     started_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     submitted_at DATETIME,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (reviewer_id) REFERENCES users(id) ON DELETE SET NULL
 )");
+// Patch existing installs that predate the is_test column.
+$sessCols = array_column($pdo->query('PRAGMA table_info(interview_sessions)')->fetchAll(), 'name');
+if (!in_array('is_test', $sessCols, true)) {
+    $pdo->exec('ALTER TABLE interview_sessions ADD COLUMN is_test INTEGER NOT NULL DEFAULT 0');
+}
 
 $pdo->exec("CREATE TABLE IF NOT EXISTS interview_answers (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -99,10 +113,21 @@ $pdo->exec("CREATE TABLE IF NOT EXISTS interview_events (
     FOREIGN KEY (session_id) REFERENCES interview_sessions(id) ON DELETE CASCADE
 )");
 
-echo "<p>✅ Tables ready (interview_exercises, interview_sessions, interview_answers, interview_proctor_images, interview_events)</p>";
+// Scratch store for applied 'form → database' tasks: candidates POST form data
+// here from their live preview and it really persists, scoped to their session.
+$pdo->exec("CREATE TABLE IF NOT EXISTS interview_sandbox_entries (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+    exercise_id INTEGER NOT NULL,
+    payload_json TEXT NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (session_id) REFERENCES interview_sessions(id) ON DELETE CASCADE
+)");
 
-// ── Reset pool (sessions/answers preserved) ──────────────────────────────────
-$pdo->exec('DELETE FROM interview_exercises');
+echo "<p>✅ Tables ready (interview_exercises, +sessions, answers, proctor_images, events, sandbox_entries)</p>";
+
+// Pool was dropped/recreated above — nothing else to reset here.
 
 // Helper: build a problem row
 function P(string $kind, string $title, string $prompt, string $instructions,
@@ -407,20 +432,44 @@ $problems[] = P('debugging', 'Fix: Truthy Filter',
     [T([[1,2,3,4]],[2,4],true), T([[1,3,5]],[],true), T([[2,4,6]],[2,4,6]), T([[0,1]],[0])],
     'easy');
 
+// ── Applied / project tasks (built in a live browser preview, like the LMS
+//    lessons; graded by requirement checklist + admin review). PR() helper. ───
+function PR(string $category, string $title, string $prompt, string $instructions,
+           string $exerciseType, string $starter, string $solution,
+           string $difficulty = 'medium', int $points = 15): array {
+    return [
+        'kind' => 'project', 'category' => $category, 'title' => $title, 'prompt' => $prompt,
+        'instructions' => $instructions, 'exercise_type' => $exerciseType,
+        'starter' => $starter, 'solution' => $solution, 'difficulty' => $difficulty, 'points' => $points,
+    ];
+}
+require __DIR__ . '/seed_interview_projects.php';   // defines $projects[]
+
 // ── Insert pool ──────────────────────────────────────────────────────────────
 $ins = $pdo->prepare(
     'INSERT INTO interview_exercises
-        (kind, title, prompt, instructions, language, entry_function, starter_code, reference_solution, test_cases_json, difficulty, points)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+        (kind, category, title, prompt, instructions, language, exercise_type, entry_function, starter_code, reference_solution, test_cases_json, difficulty, points)
+     VALUES (:kind, :cat, :title, :prompt, :instr, :lang, :etype, :entry, :starter, :sol, :tests, :diff, :pts)'
 );
-$coding = 0; $debugging = 0;
+$coding = 0; $debugging = 0; $project = 0;
 foreach ($problems as $p) {
-    $testJson = json_encode(['entry' => $p['entry'], 'cases' => $p['cases']]);
     $ins->execute([
-        $p['kind'], $p['title'], $p['prompt'], $p['instructions'], 'javascript',
-        $p['entry'], $p['starter'], $p['solution'], $testJson, $p['difficulty'], $p['points'],
+        ':kind' => $p['kind'], ':cat' => null, ':title' => $p['title'], ':prompt' => $p['prompt'],
+        ':instr' => $p['instructions'], ':lang' => 'javascript', ':etype' => 'javascript',
+        ':entry' => $p['entry'], ':starter' => $p['starter'], ':sol' => $p['solution'],
+        ':tests' => json_encode(['entry' => $p['entry'], 'cases' => $p['cases']]),
+        ':diff' => $p['difficulty'], ':pts' => $p['points'],
     ]);
     $p['kind'] === 'coding' ? $coding++ : $debugging++;
+}
+foreach ($projects as $p) {
+    $ins->execute([
+        ':kind' => 'project', ':cat' => $p['category'], ':title' => $p['title'], ':prompt' => $p['prompt'],
+        ':instr' => $p['instructions'], ':lang' => $p['exercise_type'], ':etype' => $p['exercise_type'],
+        ':entry' => '', ':starter' => $p['starter'], ':sol' => $p['solution'],
+        ':tests' => '{}', ':diff' => $p['difficulty'], ':pts' => $p['points'],
+    ]);
+    $project++;
 }
 
 // ── Difficulty policy ────────────────────────────────────────────────────────
@@ -447,9 +496,14 @@ foreach ($pdo->query("SELECT difficulty, COUNT(*) c FROM interview_exercises GRO
     $diffCounts[$r['difficulty']] = (int)$r['c'];
 }
 
-echo "<p>✅ Seeded pool: <strong>{$coding}</strong> coding + <strong>{$debugging}</strong> debugging problems</p>";
+$projByCat = [];
+foreach ($pdo->query("SELECT category, COUNT(*) c FROM interview_exercises WHERE kind='project' GROUP BY category")->fetchAll() as $r) {
+    $projByCat[] = $r['category'] . ' × ' . $r['c'];
+}
+echo "<p>✅ Seeded pool: <strong>{$coding}</strong> coding + <strong>{$debugging}</strong> debugging + <strong>{$project}</strong> applied/project problems</p>";
+echo "<p>Applied categories: " . htmlspecialchars(implode(', ', $projByCat)) . "</p>";
 echo "<p>Difficulty: <strong>" . ($diffCounts['easy'] ?? 0) . "</strong> easy, <strong>" . ($diffCounts['medium'] ?? 0) . "</strong> medium, <strong>" . ($diffCounts['hard'] ?? 0) . "</strong> hard</p>";
-echo "<p>Each session draws 2 easy + 1 medium coding and 7 easy + 3 medium debugging — 9 easy / 4 medium (~70/30), shuffled.</p>";
+echo "<p>Each session draws 1E+1M coding, 4E+1M debugging, and 1 task from each of the 4 applied categories — 11 relatable tasks, shuffled.</p>";
 echo "<hr><p><strong>Done.</strong></p>";
 echo '<p style="color:#c00">⚠ Delete this file (database/setup_interview.php) after running in production.</p>';
 echo '</body>';

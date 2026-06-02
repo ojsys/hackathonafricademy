@@ -99,6 +99,11 @@ require_once __DIR__ . '/../includes/header.php';
             </div>
         </div>
 
+        <div class="iv-preview-wrap" id="iv-preview-wrap" style="display:none">
+            <div class="iv-preview-label"><i class="bi bi-window me-1"></i>Live preview</div>
+            <iframe id="iv-preview" class="iv-preview" title="Live preview"></iframe>
+        </div>
+
         <div class="iv-results" id="iv-results"></div>
     </main>
 </div>
@@ -114,6 +119,7 @@ require_once __DIR__ . '/../includes/header.php';
 
 <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/loader.js"></script>
 <script src="/public/js/interview_harness.js"></script>
+<script src="/public/js/interview_preview.js"></script>
 <script>
 (function () {
     var SESSION_ID = <?= (int)$session['id'] ?>;
@@ -147,14 +153,18 @@ require_once __DIR__ . '/../includes/header.php';
 
     /* ── Task list rendering ─────────────────────────────────── */
     var listEl = document.getElementById('iv-tasklist');
+    function taskIcon(t) {
+        return t.kind === 'coding' ? 'code-slash' : (t.kind === 'debugging' ? 'bug' : 'window');
+    }
     function buildList() {
-        var codingN = 0, debugN = 0, html = '';
+        var codingN = 0, debugN = 0, webN = 0, html = '';
         TASKS.forEach(function (t, i) {
-            var label = t.kind === 'coding' ? 'Coding ' + (++codingN) : 'Debug ' + (++debugN);
+            var label = t.kind === 'coding' ? 'Coding ' + (++codingN)
+                      : (t.kind === 'debugging' ? 'Debug ' + (++debugN) : 'Web ' + (++webN));
             html += '<button type="button" class="iv-task-item" data-i="' + i + '">' +
                         '<span class="iv-task-dot" data-dot="' + t.id + '"></span>' +
                         '<span class="iv-task-item-label">' + label + '</span>' +
-                        '<i class="bi bi-' + (t.kind === 'coding' ? 'code-slash' : 'bug') + ' iv-task-item-icon"></i>' +
+                        '<i class="bi bi-' + taskIcon(t) + ' iv-task-item-icon"></i>' +
                     '</button>';
         });
         listEl.innerHTML = html;
@@ -177,26 +187,64 @@ require_once __DIR__ . '/../includes/header.php';
     }
     function esc(s) { return String(s == null ? '' : s).replace(/[&<>]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]; }); }
 
+    function isProject(t) { return t.kind === 'project'; }
+    function monacoLangFor(t) {
+        var e = t.exercise_type || 'javascript';
+        return e === 'javascript' ? 'javascript' : (e === 'css' ? 'css' : 'html');
+    }
+    function reqList(t) {
+        return (t.instructions || '').split('\n').map(function (l) { return l.trim(); })
+            .filter(function (l) { return /^\d+\./.test(l); })
+            .map(function (l) { return l.replace(/^\d+\.\s*/, ''); });
+    }
+    function renderPreview(t, code) {
+        var wrap = document.getElementById('iv-preview-wrap');
+        var iframe = document.getElementById('iv-preview');
+        try {
+            var html = window.interviewBuildPreview(code, t.exercise_type, { token: CSRF, exerciseId: t.id });
+            iframe.src = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
+        } catch (e) {}
+        wrap.style.display = 'block';
+    }
+
     /* ── Switch to a task ────────────────────────────────────── */
     function go(i) {
         if (i < 0 || i >= TASKS.length) return;
         flushCurrent();
         current = i;
         var t = TASKS[i];
-        document.getElementById('iv-task-kind').innerHTML = t.kind === 'coding'
+        var kindBadge = t.kind === 'coding'
             ? '<span class="badge bg-info-subtle text-info-emphasis"><i class="bi bi-code-slash me-1"></i>Coding Task</span>'
-            : '<span class="badge bg-danger-subtle text-danger-emphasis"><i class="bi bi-bug-fill me-1"></i>Debug Task</span>';
+            : (t.kind === 'debugging'
+                ? '<span class="badge bg-danger-subtle text-danger-emphasis"><i class="bi bi-bug-fill me-1"></i>Debug Task</span>'
+                : '<span class="badge bg-success-subtle text-success-emphasis"><i class="bi bi-window me-1"></i>Applied Web Task</span>');
+        document.getElementById('iv-task-kind').innerHTML = kindBadge;
         document.getElementById('iv-task-title').textContent = t.title;
         document.getElementById('iv-task-diff').textContent = (t.difficulty || '').toUpperCase();
         document.getElementById('iv-task-points').textContent = t.points + ' pts';
         document.getElementById('iv-task-prompt').textContent = t.prompt;
         var ins = (t.instructions || '').split('\n').map(function (l) { return l.trim(); }).filter(Boolean);
+        var note = t.kind === 'debugging'
+            ? '<div class="iv-debug-note"><i class="bi bi-bug-fill me-1"></i>The function below is broken — fix it so all requirements hold.</div>'
+            : (isProject(t) ? '<div class="iv-applied-note"><i class="bi bi-window me-1"></i>Build this in the editor, then <strong>Run &amp; Check</strong> to preview it live below.</div>' : '');
         document.getElementById('iv-task-instructions').innerHTML =
-            (t.kind === 'debugging' ? '<div class="iv-debug-note"><i class="bi bi-bug-fill me-1"></i>The function below is broken — fix it so all requirements hold.</div>' : '') +
-            '<strong class="small">Requirements:</strong><ul class="small mb-0 mt-1">' +
+            note + '<strong class="small">Requirements:</strong><ul class="small mb-0 mt-1">' +
             ins.map(function (l) { return '<li>' + esc(l.replace(/^\d+\.\s*/, '')) + '</li>'; }).join('') + '</ul>';
         document.getElementById('iv-results').innerHTML = '';
-        if (editor) editor.setValue(codeMap[t.id] || t.starter || '');
+
+        if (editor) {
+            if (window.monaco) monaco.editor.setModelLanguage(editor.getModel(), monacoLangFor(t));
+            editor.setValue(codeMap[t.id] || t.starter || '');
+        }
+
+        var runBtn = document.getElementById('iv-run-btn');
+        if (isProject(t)) {
+            runBtn.innerHTML = '<i class="bi bi-play me-1"></i>Run &amp; Check';
+            renderPreview(t, codeMap[t.id] || t.starter || '');
+        } else {
+            runBtn.innerHTML = '<i class="bi bi-play me-1"></i>Run Tests';
+            document.getElementById('iv-preview-wrap').style.display = 'none';
+        }
         refreshDots();
     }
 
@@ -229,11 +277,30 @@ require_once __DIR__ . '/../includes/header.php';
         }).catch(function () { setSaveState('Save failed', false); });
     }
 
-    /* ── Run sample tests ────────────────────────────────────── */
+    /* ── Run (sample tests, or preview + checklist for applied tasks) ─── */
+    function runProjectCheck(t, code) {
+        renderPreview(t, code);
+        var reqs = reqList(t);
+        var resEl = document.getElementById('iv-results');
+        if (!reqs.length) { resEl.innerHTML = '<div class="iv-res-info">Preview updated — this task is reviewed manually.</div>'; saveAnswer(t.id); return; }
+        var results = window.interviewCheckRequirements(code, reqs);
+        var met = results.filter(function (r) { return r.met; }).length;
+        var head = '<div class="iv-res-head ' + (met === reqs.length ? 'ok' : 'warn') + '">' +
+                   '<i class="bi bi-' + (met === reqs.length ? 'check-circle-fill' : 'exclamation-circle-fill') + ' me-1"></i>' +
+                   met + ' / ' + reqs.length + ' requirements detected</div>';
+        var rows = results.map(function (r) {
+            return '<div class="iv-res-row ' + (r.met ? 'pass' : 'fail') + '">' +
+                '<i class="bi bi-' + (r.met ? 'check-circle-fill text-success' : 'circle text-muted') + ' me-1"></i>' + esc(r.text) + '</div>';
+        }).join('');
+        resEl.innerHTML = head + rows + '<div class="iv-res-info mt-2"><i class="bi bi-info-circle me-1"></i>This checklist is a guide — a reviewer scores your work and the live preview.</div>';
+        saveAnswer(t.id, met, reqs.length);
+    }
+
     document.getElementById('iv-run-btn').addEventListener('click', function () {
         var t = TASKS[current];
         var code = editor.getValue();
         codeMap[t.id] = code; dirty[t.id] = true;
+        if (isProject(t)) { runProjectCheck(t, code); return; }
         var resEl = document.getElementById('iv-results');
         if (!t.sample_cases || !t.sample_cases.length) {
             resEl.innerHTML = '<div class="iv-res-info">No sample cases for this task — your submission is reviewed manually.</div>';
@@ -268,6 +335,7 @@ require_once __DIR__ . '/../includes/header.php';
         codeMap[t.id] = t.starter || ''; dirty[t.id] = true;
         saveAnswer(t.id);
         document.getElementById('iv-results').innerHTML = '';
+        if (isProject(t)) renderPreview(t, t.starter || '');
     });
     document.getElementById('iv-prev-btn').addEventListener('click', function () { go(current - 1); });
     document.getElementById('iv-next-btn').addEventListener('click', function () { go(current + 1); });

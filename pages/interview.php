@@ -104,18 +104,22 @@ require_once __DIR__ . '/../includes/header.php';
             <div class="card">
                 <div class="card-body p-4">
                     <h3 class="fw-700 mb-1">Interview Brief</h3>
-                    <p class="text-muted mb-4">You will solve real coding tasks and fix buggy programs, live in the editor.</p>
+                    <p class="text-muted mb-4">Hands-on tasks built from what you learned: write JavaScript, fix buggy code, and build real web features — forms, layouts and pages — live in the editor.</p>
 
                     <div class="row g-3 mb-4">
-                        <div class="col-4 text-center p-3 rounded" style="background:var(--surface-hover)">
+                        <div class="col-3 text-center p-3 rounded" style="background:var(--surface-hover)">
                             <div class="fw-700" style="font-size:1.5rem;color:var(--primary)"><?= INTERVIEW_CODING_COUNT ?></div>
-                            <div class="small text-muted">Coding tasks</div>
+                            <div class="small text-muted">Coding</div>
                         </div>
-                        <div class="col-4 text-center p-3 rounded" style="background:var(--surface-hover)">
+                        <div class="col-3 text-center p-3 rounded" style="background:var(--surface-hover)">
                             <div class="fw-700" style="font-size:1.5rem;color:var(--primary)"><?= INTERVIEW_DEBUG_COUNT ?></div>
-                            <div class="small text-muted">Debug tasks</div>
+                            <div class="small text-muted">Debugging</div>
                         </div>
-                        <div class="col-4 text-center p-3 rounded" style="background:var(--surface-hover)">
+                        <div class="col-3 text-center p-3 rounded" style="background:var(--surface-hover)">
+                            <div class="fw-700" style="font-size:1.5rem;color:var(--primary)"><?= count(INTERVIEW_PROJECT_CATEGORIES) ?></div>
+                            <div class="small text-muted">Applied web</div>
+                        </div>
+                        <div class="col-3 text-center p-3 rounded" style="background:var(--surface-hover)">
                             <div class="fw-700" style="font-size:1.5rem;color:var(--primary)"><?= INTERVIEW_TIME_LIMIT ?></div>
                             <div class="small text-muted">Minutes</div>
                         </div>
@@ -125,9 +129,9 @@ require_once __DIR__ . '/../includes/header.php';
                         <strong><i class="bi bi-info-circle me-1"></i>How it works</strong>
                         <ul class="mb-0 mt-2 ps-3 small">
                             <li>Your tasks are drawn at random and are unique to you.</li>
-                            <li>Write JavaScript in the editor and use <strong>Run Tests</strong> to check sample cases in your browser.</li>
-                            <li>Your work autosaves continuously.</li>
-                            <li>You get <strong>one</strong> attempt — there are no retakes.</li>
+                            <li>Coding &amp; debugging tasks: write JavaScript and use <strong>Run Tests</strong> to check sample cases.</li>
+                            <li>Applied web tasks: build HTML/CSS/JS and use <strong>Run &amp; Check</strong> to see it live in the preview.</li>
+                            <li>Your work autosaves continuously, and you get <strong>one</strong> attempt — no retakes.</li>
                         </ul>
                     </div>
 
@@ -136,8 +140,8 @@ require_once __DIR__ . '/../includes/header.php';
                         Your camera will take periodic snapshots and tab-switching, copying and pasting are recorded for the reviewers. Work on your own, in a quiet, well-lit space.
                     </div>
 
-                    <?php if (!$unlocked && $isAdmin): ?>
-                    <div class="alert alert-info"><i class="bi bi-eye me-1"></i><strong>Admin:</strong> eligibility bypassed for you. Starting will create a real session on your account.</div>
+                    <?php if ($isAdmin): ?>
+                    <div class="alert alert-info"><i class="bi bi-eye me-1"></i><strong>Admin:</strong> eligibility<?= !$open ? ' and the open switch' : '' ?> are bypassed for you. Starting here creates a <strong>test run</strong> (flagged, kept out of the candidate review queue) — it does not open the interview for candidates.</div>
                     <?php endif; ?>
 
                     <form method="POST" action="/actions/start_interview.php">
