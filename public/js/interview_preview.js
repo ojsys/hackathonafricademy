@@ -42,7 +42,8 @@
         } else {
             body = code; // combined / html fragment (may include its own <style>/<script>)
         }
-        return '<!DOCTYPE html><html><head><meta charset="utf-8">' + base + injector(ctx) +
+        return '<!DOCTYPE html><html><head><meta charset="utf-8">' +
+               '<meta name="viewport" content="width=device-width, initial-scale=1">' + base + injector(ctx) +
                '</head><body>' + body + '</body></html>';
     };
 
