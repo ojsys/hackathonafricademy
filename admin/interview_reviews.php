@@ -90,11 +90,11 @@ if ($sessionId) {
                     <?php if (empty($images)): ?>
                     <p class="text-muted small">No snapshots captured (camera denied or unavailable).</p>
                     <?php else: ?>
-                    <div class="d-flex flex-wrap gap-2 mb-3">
-                        <?php foreach ($images as $img): ?>
-                        <a href="/public/<?= h($img['image_path']) ?>" target="_blank" title="<?= date('H:i:s', strtotime($img['captured_at'])) ?>">
-                            <img src="/public/<?= h($img['image_path']) ?>" style="width:120px;height:90px;object-fit:cover;border-radius:var(--radius);border:1px solid var(--border)">
-                        </a>
+                    <div class="d-flex flex-wrap gap-2 mb-3" id="iv-snapshots">
+                        <?php foreach ($images as $idx => $img): ?>
+                        <img src="/public/<?= h($img['image_path']) ?>" class="iv-snap" data-index="<?= $idx ?>"
+                             title="<?= date('H:i:s', strtotime($img['captured_at'])) ?>"
+                             style="width:120px;height:90px;object-fit:cover;border-radius:var(--radius);border:1px solid var(--border);cursor:pointer">
                         <?php endforeach; ?>
                     </div>
                     <?php endif; ?>
@@ -204,9 +204,32 @@ if ($sessionId) {
         </div>
     </div>
 
+    <!-- Snapshot lightbox -->
+    <div class="iv-lightbox" id="iv-lightbox" aria-hidden="true">
+        <button type="button" class="iv-lb-close" data-lb-close aria-label="Close">&times;</button>
+        <button type="button" class="iv-lb-nav iv-lb-prev" data-lb-prev aria-label="Previous">&#8249;</button>
+        <div class="iv-lb-stage" id="iv-lb-stage">
+            <img class="iv-lb-img" id="iv-lb-img" alt="Camera snapshot">
+            <div class="iv-lb-caption" id="iv-lb-caption"></div>
+        </div>
+        <button type="button" class="iv-lb-nav iv-lb-next" data-lb-next aria-label="Next">&#8250;</button>
+    </div>
+
     <style>
     .iv-code-view { background:#0D1117; color:#e0e0e0; border:1px solid var(--border); border-radius:var(--radius); padding:1rem; font-family:var(--font-mono); font-size:.82rem; max-height:320px; overflow:auto; white-space:pre; }
     .iv-decision-opt { display:flex; align-items:center; gap:.4rem; padding:.5rem .9rem; border:1px solid var(--border); border-radius:var(--radius); cursor:pointer; }
+    .iv-lightbox { position:fixed; inset:0; z-index:1080; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,.85); padding:1rem; touch-action:pan-y; }
+    .iv-lightbox.open { display:flex; }
+    .iv-lb-stage { max-width:90vw; max-height:88vh; display:flex; flex-direction:column; align-items:center; gap:.6rem; user-select:none; }
+    .iv-lb-img { max-width:90vw; max-height:80vh; object-fit:contain; border-radius:var(--radius); box-shadow:0 10px 40px rgba(0,0,0,.5); pointer-events:none; }
+    .iv-lb-caption { color:#fff; font-size:.85rem; opacity:.85; }
+    .iv-lb-close { position:absolute; top:1rem; right:1.25rem; background:none; border:none; color:#fff; font-size:2.2rem; line-height:1; cursor:pointer; opacity:.8; }
+    .iv-lb-close:hover { opacity:1; }
+    .iv-lb-nav { background:rgba(255,255,255,.12); border:none; color:#fff; font-size:2.4rem; line-height:1; width:54px; height:54px; border-radius:50%; cursor:pointer; flex:0 0 auto; transition:background .15s; }
+    .iv-lb-nav:hover { background:rgba(255,255,255,.28); }
+    .iv-lb-prev { position:absolute; left:1rem; }
+    .iv-lb-next { position:absolute; right:1rem; }
+    @media (max-width:640px) { .iv-lb-nav { width:44px; height:44px; font-size:2rem; } }
     </style>
 
     <script src="/public/js/interview_harness.js"></script>
@@ -215,6 +238,50 @@ if ($sessionId) {
     (function () {
         var TASKS = <?= json_encode($jsTasks, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
         var CSRF  = <?= json_encode(csrf_token()) ?>;
+
+        // ── Camera snapshot lightbox (swipable, no new tab) ─────────────
+        var SNAPS = <?= json_encode(array_map(function ($img) {
+            return ['src' => '/public/' . $img['image_path'], 'time' => date('H:i:s', strtotime($img['captured_at']))];
+        }, $images), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+        (function initLightbox() {
+            if (!SNAPS.length) return;
+            var box = document.getElementById('iv-lightbox');
+            var imgEl = document.getElementById('iv-lb-img');
+            var capEl = document.getElementById('iv-lb-caption');
+            var stage = document.getElementById('iv-lb-stage');
+            var cur = 0;
+
+            function render() {
+                imgEl.src = SNAPS[cur].src;
+                capEl.textContent = 'Snapshot ' + (cur + 1) + ' of ' + SNAPS.length + ' · ' + SNAPS[cur].time;
+            }
+            function open(i) { cur = i; render(); box.classList.add('open'); box.setAttribute('aria-hidden', 'false'); }
+            function close() { box.classList.remove('open'); box.setAttribute('aria-hidden', 'true'); }
+            function step(d) { cur = (cur + d + SNAPS.length) % SNAPS.length; render(); }
+
+            document.querySelectorAll('#iv-snapshots .iv-snap').forEach(function (el) {
+                el.addEventListener('click', function () { open(parseInt(el.dataset.index, 10)); });
+            });
+            box.querySelector('[data-lb-close]').addEventListener('click', close);
+            box.querySelector('[data-lb-prev]').addEventListener('click', function (e) { e.stopPropagation(); step(-1); });
+            box.querySelector('[data-lb-next]').addEventListener('click', function (e) { e.stopPropagation(); step(1); });
+            // Click the backdrop (but not the image/controls) to close.
+            box.addEventListener('click', function (e) { if (e.target === box || e.target === stage) close(); });
+            document.addEventListener('keydown', function (e) {
+                if (!box.classList.contains('open')) return;
+                if (e.key === 'Escape') close();
+                else if (e.key === 'ArrowLeft') step(-1);
+                else if (e.key === 'ArrowRight') step(1);
+            });
+            // Touch swipe — navigate within the modal without opening a new image.
+            var sx = 0, sy = 0;
+            box.addEventListener('touchstart', function (e) { sx = e.changedTouches[0].clientX; sy = e.changedTouches[0].clientY; }, { passive: true });
+            box.addEventListener('touchend', function (e) {
+                var dx = e.changedTouches[0].clientX - sx, dy = e.changedTouches[0].clientY - sy;
+                if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy)) step(dx < 0 ? 1 : -1);
+            }, { passive: true });
+        })();
+
         function esc(s){return String(s==null?'':s).replace(/[&<>]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c];});}
 
         function reqList(t){ return (t.instructions||'').split('\n').map(function(l){return l.trim();})

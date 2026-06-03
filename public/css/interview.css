@@ -104,11 +104,12 @@
     font-size: 0.82rem;
 }
 .iv-applied-note .bi { color: #22c55e; }
-.iv-preview-wrap { padding: 0 1.25rem 1rem; }
-.iv-preview-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: .08em; color: var(--text-muted); margin: 0.25rem 0; }
+.iv-preview-wrap { padding: 0 0 1rem; }
+.iv-preview-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: .08em; color: var(--text-muted); margin: 0.25rem 0; padding: 0 1.25rem; }
 .iv-preview {
-    width: 100%; height: 300px; background: #fff;
-    border: 1px solid var(--border); border-radius: var(--radius);
+    width: 100%; height: 70vh; min-height: 560px; background: #fff;
+    border: 1px solid var(--border); border-radius: 0;
+    display: block;
 }
 
 /* Proctor widget */
