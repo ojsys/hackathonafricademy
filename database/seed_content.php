@@ -44,13 +44,13 @@ $pdo->exec("INSERT INTO modules (id, course_id, title, description, order_index)
 
 // Create Final Exams
 $pdo->exec("INSERT INTO final_exams (id, course_id, title, description, pass_mark, time_limit, mcq_count, coding_count) VALUES 
-(1, 1, 'HTML Final Assessment', 'Comprehensive test of your HTML knowledge including document structure, semantic elements, forms, and best practices.', 70, 45, 15, 2)");
+(1, 1, 'HTML Final Assessment', 'Comprehensive test of your HTML knowledge including document structure, semantic elements, forms, and best practices.', 80, 45, 15, 2)");
 
 $pdo->exec("INSERT INTO final_exams (id, course_id, title, description, pass_mark, time_limit, mcq_count, coding_count) VALUES 
-(2, 2, 'CSS Final Assessment', 'Test your CSS skills including selectors, box model, flexbox, responsive design, and styling best practices.', 70, 45, 15, 2)");
+(2, 2, 'CSS Final Assessment', 'Test your CSS skills including selectors, box model, flexbox, responsive design, and styling best practices.', 80, 45, 15, 2)");
 
 $pdo->exec("INSERT INTO final_exams (id, course_id, title, description, pass_mark, time_limit, mcq_count, coding_count) VALUES 
-(3, 3, 'JavaScript Final Assessment', 'Evaluate your JavaScript fundamentals including variables, functions, DOM manipulation, and problem solving.', 70, 60, 15, 3)");
+(3, 3, 'JavaScript Final Assessment', 'Evaluate your JavaScript fundamentals including variables, functions, DOM manipulation, and problem solving.', 80, 60, 15, 3)");
 
 // Create basic lessons for HTML Module 1 & 2
 $htmlLesson1 = 'Learn how the web works, client-server model, and what HTML is.';

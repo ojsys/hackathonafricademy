@@ -200,7 +200,7 @@ CREATE TABLE final_exams (
     course_id INTEGER NOT NULL UNIQUE,
     title VARCHAR(200) NOT NULL,
     description TEXT,
-    pass_mark INTEGER NOT NULL DEFAULT 70,
+    pass_mark INTEGER NOT NULL DEFAULT 80,
     time_limit INTEGER DEFAULT 60,
     mcq_count INTEGER DEFAULT 10,
     coding_count INTEGER DEFAULT 2,

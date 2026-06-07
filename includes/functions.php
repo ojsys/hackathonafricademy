@@ -586,6 +586,61 @@ function get_final_exam_questions(int $examId): array {
     return $stmt->fetchAll();
 }
 
+/**
+ * Grade a coding answer by comparing it against the reference solution.
+ *
+ * Rather than awarding free marks for any typed code, we extract the
+ * significant tokens (keywords, identifiers, tag/property names) from the
+ * reference solution and measure how many of them the student's submission
+ * actually contains. Points are awarded in proportion to that coverage, so a
+ * partial answer earns partial credit and gibberish earns ~0.
+ *
+ * @return array{earned:int, coverage:float, matched:int, total:int}
+ */
+function grade_coding_answer(string $userCode, ?string $solutionCode, ?string $starterCode, int $points): array {
+    $user     = trim($userCode);
+    $solution = trim((string)$solutionCode);
+    $starter  = trim((string)$starterCode);
+
+    // No real submission, or it's just the untouched starter -> no credit.
+    if ($user === '' || $user === $starter) {
+        return ['earned' => 0, 'coverage' => 0.0, 'matched' => 0, 'total' => 0];
+    }
+
+    // Pull significant tokens (length >= 2, allowing CSS-style hyphenated names).
+    $extract = static function (string $code): array {
+        $code = strtolower($code);
+        preg_match_all('/[a-z_][a-z0-9_-]{1,}/', $code, $m);
+        return $m[0] ?? [];
+    };
+
+    $solTokens = array_values(array_unique($extract($solution)));
+
+    // No reference solution available -> fall back to a conservative effort
+    // check worth half credit, leaving room for manual review to top it up.
+    if (empty($solTokens)) {
+        $hasSubstance = strlen($user) > strlen($starter) + 15;
+        return [
+            'earned'   => $hasSubstance ? (int)round($points * 0.5) : 0,
+            'coverage' => $hasSubstance ? 0.5 : 0.0,
+            'matched'  => 0,
+            'total'    => 0,
+        ];
+    }
+
+    $userTokens = array_flip($extract($user));
+    $matched = 0;
+    foreach ($solTokens as $tok) {
+        if (isset($userTokens[$tok])) $matched++;
+    }
+
+    $total    = count($solTokens);
+    $coverage = $total > 0 ? $matched / $total : 0.0;
+    $earned   = (int)round($points * $coverage);
+
+    return ['earned' => $earned, 'coverage' => $coverage, 'matched' => $matched, 'total' => $total];
+}
+
 function get_best_exam_attempt(int $userId, int $examId): ?array {
     $stmt = db()->prepare('SELECT * FROM final_exam_attempts WHERE user_id = ? AND exam_id = ? AND completed_at IS NOT NULL ORDER BY score DESC LIMIT 1');
     $stmt->execute([$userId, $examId]);
@@ -668,10 +723,13 @@ function create_or_update_candidate_review(int $userId): void {
         $speedBonus = round(max(0, (1 - $ratio) * 5), 2); // 0–5 pts
     }
 
-    // Attempt penalty: -2 points per extra attempt, max -10
+    // Attempt penalty is now applied directly to each exam attempt's recorded
+    // score (see actions/submit_exam.php), so avg_exam_score already reflects it.
+    // We keep recording the extra-attempt count here for admin visibility, but no
+    // longer subtract it again from the composite to avoid double-penalising.
     $attemptPenalty = round(min($totalAttempts * 2, 10), 2);
 
-    $compositeScore = round(max(0, min(100, $baseScore + $speedBonus - $attemptPenalty)), 2);
+    $compositeScore = round(max(0, min(100, $baseScore + $speedBonus)), 2);
 
     // Check qualifying exam result (most recent completed attempt)
     $qualStmt = db()->prepare('SELECT passed FROM qualifying_attempts WHERE user_id = ? AND completed_at IS NOT NULL ORDER BY completed_at DESC LIMIT 1');

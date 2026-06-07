@@ -58,30 +58,37 @@ foreach ($questions as $q) {
             $mcqScore += $q['points'];
         }
     } else {
-        // Coding question — store submission, award partial credit if code is non-empty
+        // Coding question — grade against the reference solution (partial credit
+        // proportional to how much of the solution the student actually reproduced).
         $codingTotal += $q['points'];
         $userCode = trim($_POST['code_' . $q['id']] ?? '');
-        $starterCode = trim($q['starter_code'] ?? '');
-        
-        // Simple check: give points if student wrote substantial code beyond starter
-        $hasCode = !empty($userCode) && $userCode !== $starterCode && strlen($userCode) > strlen($starterCode) + 10;
+
+        $grade = grade_coding_answer($userCode, $q['solution_code'] ?? null, $q['starter_code'] ?? null, $q['points']);
 
         $codeSubmissions[$q['id']] = [
-            'code' => $userCode,
-            'has_content' => $hasCode
+            'code'     => $userCode,
+            'earned'   => $grade['earned'],
+            'points'   => $q['points'],
+            'coverage' => round($grade['coverage'], 2),
         ];
 
-        if ($hasCode) {
-            // Award full points for coding (manual review can adjust later)
-            $earnedPoints += $q['points'];
-            $codingScore += $q['points'];
-        }
+        $earnedPoints += $grade['earned'];
+        $codingScore  += $grade['earned'];
     }
 }
 
-$scorePercent = $totalPoints > 0 ? round(($earnedPoints / $totalPoints) * 100) : 0;
+$rawScore = $totalPoints > 0 ? round(($earnedPoints / $totalPoints) * 100) : 0;
 $mcqPercent = $mcqTotal > 0 ? round(($mcqScore / $mcqTotal) * 100) : 0;
 $codingPercent = $codingTotal > 0 ? round(($codingScore / $codingTotal) * 100) : 0;
+
+// Attempt penalty: each retake beyond the first costs 5 points off this
+// attempt's recorded score (capped at 20), discouraging brute-force retries.
+$priorStmt = db()->prepare('SELECT COUNT(*) FROM final_exam_attempts WHERE user_id = ? AND exam_id = ? AND completed_at IS NOT NULL');
+$priorStmt->execute([$user['id'], $examId]);
+$priorAttempts = (int)$priorStmt->fetchColumn();
+$attemptPenalty = min($priorAttempts * 5, 20);
+
+$scorePercent = (int)max(0, $rawScore - $attemptPenalty);
 $passed = $scorePercent >= $exam['pass_mark'];
 
 // Store attempt
@@ -122,6 +129,9 @@ $_SESSION['exam_result'] = [
     'exam_id' => $examId,
     'course_id' => $exam['course_id'],
     'score' => $scorePercent,
+    'raw_score' => $rawScore,
+    'attempt_penalty' => $attemptPenalty,
+    'attempt_number' => $priorAttempts + 1,
     'mcq_score' => $mcqPercent,
     'coding_score' => $codingPercent,
     'passed' => $passed,

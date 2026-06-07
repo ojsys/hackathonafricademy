@@ -126,8 +126,9 @@ require_once __DIR__ . '/../includes/header.php';
                         <li>This exam combines multiple-choice questions and coding exercises</li>
                         <li>You have <?= $exam['time_limit'] ?> minutes to complete all questions</li>
                         <li>You need at least <?= $exam['pass_mark'] ?>% to pass</li>
+                        <li>Coding answers are graded against the expected solution — partial or superficial code earns only partial credit, so make sure your code actually works</li>
                         <li>Passing this exam contributes to your eligibility for HackathonAfrica</li>
-                        <li>You can retake the exam if you don't pass</li>
+                        <li>You can retake the exam if you don't pass, but <strong>each retake deducts 5% from that attempt's score (up to &minus;20%)</strong> — aim to pass on your first try</li>
                     </ul>
 
                     <div class="d-flex gap-3 mt-4">

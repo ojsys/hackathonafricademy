@@ -40,6 +40,14 @@ require_once __DIR__ . '/../includes/header.php';
                         <?= $result['score'] ?>%
                     </div>
 
+                    <?php if (!empty($result['attempt_penalty'])): ?>
+                    <p class="small text-danger mb-0" data-testid="attempt-penalty">
+                        <i class="bi bi-exclamation-triangle me-1"></i>
+                        Raw score <?= $result['raw_score'] ?>% &minus; <?= $result['attempt_penalty'] ?>% retake penalty
+                        (attempt #<?= $result['attempt_number'] ?>)
+                    </p>
+                    <?php endif; ?>
+
                     <div class="row g-3 mt-4 mb-4">
                         <div class="col-4">
                             <div class="p-3 rounded" style="background: var(--surface-hover);">

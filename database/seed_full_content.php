@@ -4294,7 +4294,7 @@ echo "Added " . ($nextQId - 28) . " additional quiz questions!\n\n";
 echo "Creating final exams...\n";
 
 // HTML Final Exam
-$pdo->exec("INSERT INTO final_exams (course_id, title, description, pass_mark, time_limit, mcq_count, coding_count) VALUES (1, 'HTML Final Assessment', 'Test your knowledge of HTML fundamentals, semantic elements, forms, and accessibility.', 70, 30, 8, 2)");
+$pdo->exec("INSERT INTO final_exams (course_id, title, description, pass_mark, time_limit, mcq_count, coding_count) VALUES (1, 'HTML Final Assessment', 'Test your knowledge of HTML fundamentals, semantic elements, forms, and accessibility.', 80, 30, 8, 2)");
 $htmlExamId = $pdo->lastInsertId();
 
 $htmlExamQuestions = [
@@ -4321,7 +4321,7 @@ foreach ($htmlExamQuestions as $idx => $q) {
 echo "HTML Final Exam created (8 MCQ + 2 Coding)\n";
 
 // CSS Final Exam
-$pdo->exec("INSERT INTO final_exams (course_id, title, description, pass_mark, time_limit, mcq_count, coding_count) VALUES (2, 'CSS Final Assessment', 'Test your mastery of CSS layout, animations, responsive design, and modern features.', 70, 30, 8, 2)");
+$pdo->exec("INSERT INTO final_exams (course_id, title, description, pass_mark, time_limit, mcq_count, coding_count) VALUES (2, 'CSS Final Assessment', 'Test your mastery of CSS layout, animations, responsive design, and modern features.', 80, 30, 8, 2)");
 $cssExamId = $pdo->lastInsertId();
 
 $cssExamQuestions = [
@@ -4348,7 +4348,7 @@ foreach ($cssExamQuestions as $idx => $q) {
 echo "CSS Final Exam created (8 MCQ + 2 Coding)\n";
 
 // JavaScript Final Exam
-$pdo->exec("INSERT INTO final_exams (course_id, title, description, pass_mark, time_limit, mcq_count, coding_count) VALUES (3, 'JavaScript Final Assessment', 'Test your JavaScript skills: variables, DOM manipulation, async programming, and modern patterns.', 70, 45, 8, 2)");
+$pdo->exec("INSERT INTO final_exams (course_id, title, description, pass_mark, time_limit, mcq_count, coding_count) VALUES (3, 'JavaScript Final Assessment', 'Test your JavaScript skills: variables, DOM manipulation, async programming, and modern patterns.', 80, 45, 8, 2)");
 $jsExamId = $pdo->lastInsertId();
 
 $jsExamQuestions = [
