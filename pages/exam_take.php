@@ -177,6 +177,32 @@ const isAdminPreview = <?= $isAdminPreview ? 'true' : 'false' ?>;
 const timeLimitMinutes = <?= (int)$exam['time_limit'] ?>;
 const timeTakenInput = document.getElementById('timeTaken');
 
+/* ── Integrity event logging (proctoring flags) ──────────────
+   Mirrors the coding interview: records when the student leaves the
+   exam tab, blurs the window, or copies/pastes. Skipped in admin preview. */
+const EXAM_ID = <?= (int)$exam['id'] ?>;
+const EXAM_CSRF = <?= json_encode(csrf_token()) ?>;
+function logExamEvent(type, detail) {
+    if (isAdminPreview) return;
+    try {
+        fetch('/actions/log_exam_event.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ exam_id: EXAM_ID, csrf_token: EXAM_CSRF, event_type: type, detail: detail || '' }),
+            keepalive: true
+        }).catch(function () {});
+    } catch (e) {}
+}
+if (!isAdminPreview) {
+    logExamEvent('exam_started', 'Opened the exam');
+    document.addEventListener('visibilitychange', function () {
+        if (document.hidden) logExamEvent('tab_hidden', 'Switched away from the exam tab');
+    });
+    window.addEventListener('blur', function () { logExamEvent('window_blur', 'Exam window lost focus'); });
+    document.addEventListener('copy',  function () { logExamEvent('copy',  'Copied content from the exam'); });
+    document.addEventListener('paste', function () { logExamEvent('paste', 'Pasted content into the exam'); });
+}
+
 if (!isAdminPreview) {
     let secondsLeft = timeLimitMinutes * 60;
     const timerEl = document.getElementById('examTimer');
@@ -251,6 +277,8 @@ require(['vs/editor/editor.main'], function () {
         });
 
         monacoEditors[qId] = editor;
+
+        if (editor.onDidPaste) editor.onDidPaste(function () { logExamEvent('paste', 'Pasted into the code editor'); });
 
         editor.onDidChangeModelContent(function () {
             textarea.value = editor.getValue();

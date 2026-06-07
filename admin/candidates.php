@@ -688,7 +688,7 @@ require_once __DIR__ . '/../includes/header.php';
                                     <?php foreach ($courses as $c):
                                         $exam = get_final_exam_for_course($c['id']);
                                         if (!$exam) continue;
-                                        $allExamAttempts = db()->prepare('SELECT score, passed, started_at, completed_at, time_taken FROM final_exam_attempts WHERE user_id = ? AND exam_id = ? AND completed_at IS NOT NULL ORDER BY completed_at DESC');
+                                        $allExamAttempts = db()->prepare('SELECT id, score, passed, started_at, completed_at, time_taken FROM final_exam_attempts WHERE user_id = ? AND exam_id = ? AND completed_at IS NOT NULL ORDER BY completed_at DESC');
                                         $allExamAttempts->execute([$candidate['id'], $exam['id']]);
                                         $examAttempts = $allExamAttempts->fetchAll();
                                         if (empty($examAttempts)) continue;
@@ -698,11 +698,15 @@ require_once __DIR__ . '/../includes/header.php';
                                         <table class="table table-sm" style="font-size:.82rem">
                                             <thead>
                                                 <tr>
-                                                    <th>#</th><th>Date</th><th>Score</th><th>Time</th><th>Result</th>
+                                                    <th>#</th><th>Date</th><th>Score</th><th>Time</th><th>Result</th><th>Flags</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                <?php foreach ($examAttempts as $ei => $ea): ?>
+                                                <?php foreach ($examAttempts as $ei => $ea):
+                                                    $examEvents = get_final_exam_events((int)$ea['id']);
+                                                    $flagCount  = count_final_exam_flags((int)$ea['id']);
+                                                    $collapseId = 'examflags-' . (int)$ea['id'];
+                                                ?>
                                                 <tr>
                                                     <td><?= count($examAttempts) - $ei ?></td>
                                                     <td><?= date('M j Y', strtotime($ea['completed_at'])) ?></td>
@@ -716,7 +720,33 @@ require_once __DIR__ . '/../includes/header.php';
                                                     <td class="<?= $ea['passed'] ? 'text-success' : 'text-danger' ?>">
                                                         <?= $ea['passed'] ? 'Passed' : 'Failed' ?>
                                                     </td>
+                                                    <td>
+                                                        <?php if ($flagCount > 0): ?>
+                                                        <button type="button" class="btn btn-sm btn-link p-0 text-danger" data-bs-toggle="collapse" data-bs-target="#<?= $collapseId ?>">
+                                                            <i class="bi bi-flag-fill me-1"></i><?= $flagCount ?> flag<?= $flagCount !== 1 ? 's' : '' ?>
+                                                        </button>
+                                                        <?php else: ?>
+                                                        <span class="text-muted">0</span>
+                                                        <?php endif; ?>
+                                                    </td>
                                                 </tr>
+                                                <?php if ($flagCount > 0): ?>
+                                                <tr class="collapse" id="<?= $collapseId ?>">
+                                                    <td colspan="6" class="bg-light">
+                                                        <div class="small fw-600 mb-1"><i class="bi bi-shield-exclamation me-1"></i>Integrity events during this attempt</div>
+                                                        <table class="table table-sm mb-0" style="font-size:.78rem">
+                                                            <?php foreach ($examEvents as $ev):
+                                                                $benign = in_array($ev['event_type'], FINAL_EXAM_BENIGN_EVENTS, true); ?>
+                                                            <tr>
+                                                                <td style="width:140px"><?= date('M j, H:i:s', strtotime($ev['created_at'])) ?></td>
+                                                                <td style="width:130px"><span class="badge <?= $benign ? 'bg-secondary-subtle text-secondary-emphasis' : 'bg-danger-subtle text-danger-emphasis' ?>"><?= h($ev['event_type']) ?></span></td>
+                                                                <td class="text-muted"><?= h($ev['detail']) ?></td>
+                                                            </tr>
+                                                            <?php endforeach; ?>
+                                                        </table>
+                                                    </td>
+                                                </tr>
+                                                <?php endif; ?>
                                                 <?php endforeach; ?>
                                             </tbody>
                                         </table>

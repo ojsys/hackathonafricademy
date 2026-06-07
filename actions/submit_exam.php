@@ -109,6 +109,13 @@ $stmt->execute([
     json_encode($codeSubmissions)
 ]);
 
+$attemptId = (int)db()->lastInsertId();
+
+// Bind any integrity events logged during this run (attempt_id was NULL while
+// the exam was in progress) to the attempt that was just submitted.
+db()->prepare('UPDATE final_exam_events SET attempt_id = ? WHERE user_id = ? AND exam_id = ? AND attempt_id IS NULL')
+    ->execute([$attemptId, $user['id'], $examId]);
+
 // Always update candidate review after an exam attempt
 create_or_update_candidate_review($user['id']);
 

@@ -468,6 +468,25 @@ function get_interview_events(int $sessionId): array {
     return $stmt->fetchAll();
 }
 
+// ─── Final-exam proctoring (integrity flags) ──────────────
+// Event types considered benign (informational, not integrity flags).
+const FINAL_EXAM_BENIGN_EVENTS = ['exam_started'];
+
+function get_final_exam_events(int $attemptId): array {
+    $stmt = db()->prepare('SELECT * FROM final_exam_events WHERE attempt_id = ? ORDER BY created_at');
+    $stmt->execute([$attemptId]);
+    return $stmt->fetchAll();
+}
+
+// Count of integrity flags (all logged events except the benign ones) for an attempt.
+function count_final_exam_flags(int $attemptId): int {
+    $in = implode(',', array_fill(0, count(FINAL_EXAM_BENIGN_EVENTS), '?'));
+    $sql = "SELECT COUNT(*) FROM final_exam_events WHERE attempt_id = ? AND event_type NOT IN ($in)";
+    $stmt = db()->prepare($sql);
+    $stmt->execute(array_merge([$attemptId], FINAL_EXAM_BENIGN_EVENTS));
+    return (int)$stmt->fetchColumn();
+}
+
 function get_interview_proctor_images(int $sessionId): array {
     $stmt = db()->prepare('SELECT * FROM interview_proctor_images WHERE session_id = ? ORDER BY captured_at');
     $stmt->execute([$sessionId]);

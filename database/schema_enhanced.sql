@@ -243,6 +243,20 @@ CREATE TABLE final_exam_attempts (
     FOREIGN KEY (exam_id) REFERENCES final_exams(id) ON DELETE CASCADE
 );
 
+-- Final exam integrity events (proctoring flags: tab-switch, blur, copy, paste)
+CREATE TABLE final_exam_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    exam_id INTEGER NOT NULL,
+    attempt_id INTEGER,
+    event_type TEXT NOT NULL,
+    detail TEXT,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (exam_id) REFERENCES final_exams(id) ON DELETE CASCADE
+);
+CREATE INDEX idx_final_exam_events_attempt ON final_exam_events(attempt_id);
+
 -- Candidate reviews for admin evaluation
 CREATE TABLE candidate_reviews (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
