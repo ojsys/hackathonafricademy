@@ -39,6 +39,22 @@ if ($action === 'camera_granted') {
     exit;
 }
 
+// Log an integrity/proctoring event (tab switch, blur, copy, paste, camera_denied)
+if ($action === 'event') {
+    $type   = substr(preg_replace('/[^a-z_]/', '', strtolower($data['event_type'] ?? '')), 0, 40);
+    $detail = substr((string)($data['detail'] ?? ''), 0, 300);
+    if ($type !== '') {
+        try {
+            db()->prepare('INSERT INTO proctor_events (attempt_id, session_id, user_id, event_type, detail) VALUES (?, ?, ?, ?, ?)')
+                ->execute([$attemptId, $sessionId ?: null, $user['id'], $type, $detail]);
+        } catch (PDOException $e) {
+            // proctor_events table not created yet (pre-migration) — ignore
+        }
+    }
+    echo json_encode(['ok' => true]);
+    exit;
+}
+
 // Save image capture
 if ($action === 'capture') {
     $imageData = $data['image'] ?? '';

@@ -60,3 +60,16 @@ CREATE TABLE IF NOT EXISTS proctor_images (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (attempt_id) REFERENCES qualifying_attempts(id) ON DELETE CASCADE
 );
+
+-- Qualifying-exam integrity events (proctoring flags: tab-switch, blur, copy, paste, camera_denied)
+CREATE TABLE IF NOT EXISTS proctor_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    attempt_id INTEGER NOT NULL,
+    session_id INTEGER,
+    user_id INTEGER NOT NULL,
+    event_type TEXT NOT NULL,
+    detail TEXT,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (attempt_id) REFERENCES qualifying_attempts(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);

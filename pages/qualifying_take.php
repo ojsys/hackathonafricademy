@@ -232,6 +232,17 @@ require_once __DIR__ . '/../includes/header.php';
         <span class="text-muted"><i class="bi bi-camera-video me-1"></i>Connecting…</span>
     </div>
 </div>
+
+<!-- Camera gate: blocks the exam until camera access is granted -->
+<div id="camera-gate" style="position:fixed;inset:0;z-index:2000;background:rgba(10,12,20,.97);display:flex;align-items:center;justify-content:center;padding:1.5rem">
+    <div style="max-width:460px;text-align:center;color:#fff">
+        <i class="bi bi-camera-video-off" style="font-size:3rem;color:#f8b526"></i>
+        <h3 class="mt-3 fw-700">Camera access required</h3>
+        <p id="camera-gate-msg" class="text-light-emphasis">This exam is proctored. You must allow camera access to begin. Click below and grant permission when your browser asks.</p>
+        <button type="button" id="camera-gate-btn" class="btn btn-primary btn-lg"><i class="bi bi-camera-video me-1"></i>Enable Camera &amp; Start</button>
+        <div id="camera-gate-spinner" class="mt-3 text-muted small" style="display:none">Connecting to camera…</div>
+    </div>
+</div>
 <?php endif; ?>
 
 <script>
@@ -254,7 +265,32 @@ require_once __DIR__ . '/../includes/header.php';
     const takenEl   = document.getElementById('time-taken');
     const examLimit = <?= (int)($exam['time_limit'] * 60) ?>;
 
-    const tick = setInterval(() => {
+    // Proctoring identifiers + integrity-event logging (declared early so the
+    // camera gate and listeners below can use them).
+    const ATTEMPT_ID  = <?= (int)($attempt['id'] ?? 0) ?>;
+    const CSRF_TOKEN  = <?= json_encode($csrfToken) ?>;
+    const SESSION_ID  = <?= (int)($proctorSession['id'] ?? 0) ?>;
+
+    function logEvent(type, detail) {
+        try {
+            fetch('/actions/save_proctor_image.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'event', event_type: type, detail: detail || '', attempt_id: ATTEMPT_ID, session_id: SESSION_ID, csrf_token: CSRF_TOKEN }),
+                keepalive: true
+            }).catch(() => {});
+        } catch (e) {}
+    }
+    document.addEventListener('visibilitychange', () => { if (document.hidden) logEvent('tab_hidden', 'Switched away from the exam tab'); });
+    window.addEventListener('blur',  () => logEvent('window_blur', 'Exam window lost focus'));
+    document.addEventListener('copy',  () => logEvent('copy',  'Copied content from the exam'));
+    document.addEventListener('paste', () => logEvent('paste', 'Pasted content into the exam'));
+
+    // Timer does not start until the camera is granted (see beginExamTimer).
+    let tick = null;
+    function beginExamTimer() {
+        if (tick) return;
+        tick = setInterval(() => {
         secondsLeft = Math.max(0, secondsLeft - 1);
         const m = Math.floor(secondsLeft / 60);
         const s = secondsLeft % 60;
@@ -269,12 +305,10 @@ require_once __DIR__ . '/../includes/header.php';
             stopCamera();
             document.getElementById('exam-form').submit();
         }
-    }, 1000);
+        }, 1000);
+    }
 
     // ── Proctoring ────────────────────────────────────────────
-    const ATTEMPT_ID  = <?= (int)($attempt['id'] ?? 0) ?>;
-    const CSRF_TOKEN  = <?= json_encode($csrfToken) ?>;
-    const SESSION_ID  = <?= (int)($proctorSession['id'] ?? 0) ?>;
     const video       = document.getElementById('proctor-video');
     const canvas      = document.getElementById('capture-canvas');
     const statusEl    = document.getElementById('proctor-status');
@@ -282,6 +316,10 @@ require_once __DIR__ . '/../includes/header.php';
     let captureTimer  = null;
 
     async function startCamera() {
+        const spinner = document.getElementById('camera-gate-spinner');
+        const gateMsg = document.getElementById('camera-gate-msg');
+        const gateBtn = document.getElementById('camera-gate-btn');
+        if (spinner) spinner.style.display = 'block';
         try {
             videoStream = await navigator.mediaDevices.getUserMedia({
                 video: { facingMode: 'user', width: { ideal: 320 }, height: { ideal: 240 } },
@@ -296,10 +334,48 @@ require_once __DIR__ . '/../includes/header.php';
                 body: JSON.stringify({ action: 'camera_granted', attempt_id: ATTEMPT_ID, session_id: SESSION_ID, csrf_token: CSRF_TOKEN })
             }).catch(() => {});
 
+            // Camera granted — lift the gate and let the exam begin.
+            hideGate();
+            beginExamTimer();
             captureTimer = setTimeout(captureAndSchedule, 30000);
+
+            // If the camera is stopped or revoked mid-exam, re-block the exam.
+            videoStream.getVideoTracks().forEach(t => t.addEventListener('ended', onCameraLost));
         } catch (err) {
-            statusEl.innerHTML = '<span class="text-warning" style="font-size:.7rem"><i class="bi bi-camera-video-off me-1"></i>Camera unavailable</span>';
+            logEvent('camera_denied', 'Camera permission was not granted');
+            statusEl.innerHTML = '<span class="text-warning" style="font-size:.7rem"><i class="bi bi-camera-video-off me-1"></i>Camera blocked</span>';
+            if (spinner) spinner.style.display = 'none';
+            if (gateMsg) gateMsg.innerHTML = '<strong class="text-warning">Camera access was blocked.</strong><br>You cannot take this exam without enabling your camera. Allow camera access in your browser, then try again.';
+            if (gateBtn) gateBtn.innerHTML = '<i class="bi bi-arrow-clockwise me-1"></i>Try Again';
+            showGate();
         }
+    }
+
+    function onCameraLost() {
+        logEvent('camera_lost', 'Camera stream stopped during the exam');
+        if (tick) { clearInterval(tick); tick = null; }
+        const gateMsg = document.getElementById('camera-gate-msg');
+        const gateBtn = document.getElementById('camera-gate-btn');
+        if (gateMsg) gateMsg.innerHTML = '<strong class="text-warning">Your camera was turned off.</strong><br>The exam is paused. Re-enable your camera to continue.';
+        if (gateBtn) gateBtn.innerHTML = '<i class="bi bi-camera-video me-1"></i>Resume Exam';
+        showGate();
+    }
+
+    function showGate() {
+        const g = document.getElementById('camera-gate');
+        if (g) g.style.display = 'flex';
+        toggleSubmit(true);
+    }
+    function hideGate() {
+        const g = document.getElementById('camera-gate');
+        if (g) g.style.display = 'none';
+        toggleSubmit(false);
+    }
+    function toggleSubmit(disabled) {
+        ['submit-btn', 'submit-btn-bottom'].forEach(id => {
+            const b = document.getElementById(id);
+            if (b) b.disabled = disabled;
+        });
     }
 
     function captureAndSchedule() {
@@ -336,6 +412,10 @@ require_once __DIR__ . '/../includes/header.php';
         document.getElementById('submit-btn-bottom').disabled = true;
     });
 
+    // Block the exam until the camera is granted, then kick off the request.
+    toggleSubmit(true);
+    const gateBtn = document.getElementById('camera-gate-btn');
+    if (gateBtn) gateBtn.addEventListener('click', startCamera);
     startCamera();
 })();
 </script>

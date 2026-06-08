@@ -657,6 +657,8 @@ require_once __DIR__ . '/../includes/header.php';
                                                     <th>Score</th>
                                                     <th>Time Taken</th>
                                                     <th>Result</th>
+                                                    <th>Flags</th>
+                                                    <th></th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -675,6 +677,26 @@ require_once __DIR__ . '/../includes/header.php';
                                                         <span class="<?= $qa['passed'] ? 'text-success' : 'text-danger' ?>">
                                                             <?= $qa['passed'] ? 'Passed' : 'Failed' ?>
                                                         </span>
+                                                    </td>
+                                                    <td>
+                                                        <?php $qFlags = count_qualifying_flags((int)$qa['id']); ?>
+                                                        <?php if ($qFlags > 0): ?>
+                                                        <a href="/admin/proctor_images.php?user_id=<?= $candidate['id'] ?>" class="badge bg-danger-subtle text-danger-emphasis text-decoration-none" title="View proctoring events">
+                                                            <i class="bi bi-flag-fill me-1"></i><?= $qFlags ?>
+                                                        </a>
+                                                        <?php else: ?>
+                                                        <span class="text-muted">0</span>
+                                                        <?php endif; ?>
+                                                    </td>
+                                                    <td class="text-end">
+                                                        <form action="/actions/admin/delete_qualifying_attempt.php" method="POST" class="d-inline"
+                                                              onsubmit="return confirm('Delete this qualifying exam attempt (<?= $qa['percentage'] ?>%, <?= $qa['passed'] ? 'Passed' : 'Failed' ?>)?\n\nThis permanently removes the attempt and its proctor snapshots, and lets the candidate retake the exam. This cannot be undone.');">
+                                                            <?= csrf_field() ?>
+                                                            <input type="hidden" name="attempt_id" value="<?= (int)$qa['id'] ?>">
+                                                            <button type="submit" class="btn btn-sm btn-outline-danger py-0 px-1" title="Delete this attempt so the candidate can retake">
+                                                                <i class="bi bi-trash"></i>
+                                                            </button>
+                                                        </form>
                                                     </td>
                                                 </tr>
                                                 <?php endforeach; ?>

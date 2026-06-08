@@ -159,7 +159,9 @@ require_once __DIR__ . '/../includes/header.php';
         <?php endif; ?>
 
         <?php foreach ($attempts as $att):
-            $images = $allGalleries[$att['attempt_id']] ?? [];
+            $images   = $allGalleries[$att['attempt_id']] ?? [];
+            $events   = get_qualifying_events((int)$att['attempt_id']);
+            $flagCount = count_qualifying_flags((int)$att['attempt_id']);
         ?>
         <div class="card mb-4">
             <div class="card-header d-flex align-items-center justify-content-between">
@@ -173,8 +175,26 @@ require_once __DIR__ . '/../includes/header.php';
                     <i class="bi bi-camera<?= $att['camera_granted'] ? '-fill text-success' : '-video-off text-danger' ?>"></i>
                     <?= $att['camera_granted'] ? 'Camera granted' : 'Camera denied' ?>
                     <span class="ms-2"><?= $att['image_count'] ?> image<?= $att['image_count'] != 1 ? 's' : '' ?></span>
+                    <?php if ($flagCount > 0): ?>
+                    <span class="ms-2 badge bg-danger-subtle text-danger-emphasis"><i class="bi bi-flag-fill me-1"></i><?= $flagCount ?> flag<?= $flagCount !== 1 ? 's' : '' ?></span>
+                    <?php endif; ?>
                 </div>
             </div>
+
+            <?php if (!empty($events)): ?>
+            <div class="card-body border-bottom py-2">
+                <div class="small fw-600 mb-2"><i class="bi bi-shield-exclamation me-1 text-danger"></i>Proctoring events &amp; comments</div>
+                <table class="table table-sm mb-0" style="font-size:.8rem">
+                    <?php foreach ($events as $ev): $benign = in_array($ev['event_type'], QUALIFYING_BENIGN_EVENTS, true); ?>
+                    <tr>
+                        <td style="width:150px;white-space:nowrap"><?= date('M j, H:i:s', strtotime($ev['created_at'])) ?></td>
+                        <td style="width:130px"><span class="badge <?= $benign ? 'bg-secondary-subtle text-secondary-emphasis' : 'bg-danger-subtle text-danger-emphasis' ?>"><?= h($ev['event_type']) ?></span></td>
+                        <td class="text-muted"><?= h($ev['detail']) ?></td>
+                    </tr>
+                    <?php endforeach; ?>
+                </table>
+            </div>
+            <?php endif; ?>
 
             <?php if (empty($images)): ?>
             <div class="card-body text-muted small py-3">

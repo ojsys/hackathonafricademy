@@ -487,6 +487,32 @@ function count_final_exam_flags(int $attemptId): int {
     return (int)$stmt->fetchColumn();
 }
 
+// ─── Qualifying-exam proctoring (integrity flags) ─────────
+// Benign/informational events that are not counted as integrity flags.
+const QUALIFYING_BENIGN_EVENTS = ['camera_granted', 'exam_started'];
+
+function get_qualifying_events(int $attemptId): array {
+    try {
+        $stmt = db()->prepare('SELECT * FROM proctor_events WHERE attempt_id = ? ORDER BY created_at');
+        $stmt->execute([$attemptId]);
+        return $stmt->fetchAll();
+    } catch (PDOException $e) {
+        return []; // proctor_events table not created yet (pre-migration)
+    }
+}
+
+function count_qualifying_flags(int $attemptId): int {
+    try {
+        $in = implode(',', array_fill(0, count(QUALIFYING_BENIGN_EVENTS), '?'));
+        $sql = "SELECT COUNT(*) FROM proctor_events WHERE attempt_id = ? AND event_type NOT IN ($in)";
+        $stmt = db()->prepare($sql);
+        $stmt->execute(array_merge([$attemptId], QUALIFYING_BENIGN_EVENTS));
+        return (int)$stmt->fetchColumn();
+    } catch (PDOException $e) {
+        return 0;
+    }
+}
+
 function get_interview_proctor_images(int $sessionId): array {
     $stmt = db()->prepare('SELECT * FROM interview_proctor_images WHERE session_id = ? ORDER BY captured_at');
     $stmt->execute([$sessionId]);
@@ -590,6 +616,31 @@ function interview_delete_session(int $sessionId): void {
         }
     }
     db()->prepare('DELETE FROM interview_sessions WHERE id = ?')->execute([$sessionId]);
+}
+
+/**
+ * Delete a qualifying-exam attempt so the candidate can retake it.
+ *
+ * Removes the attempt row — which cascades to its proctor sessions and image
+ * records (FK ON DELETE CASCADE) — and deletes the proctor snapshot files from
+ * disk first, since the database cascade cannot remove files.
+ */
+function qualifying_delete_attempt(int $attemptId): void {
+    $publicBase = realpath(__DIR__ . '/../public');
+    try {
+        $imgs = db()->prepare('SELECT image_path FROM proctor_images WHERE attempt_id = ?');
+        $imgs->execute([$attemptId]);
+        foreach ($imgs->fetchAll(PDO::FETCH_COLUMN) as $path) {
+            $full = $publicBase ? realpath($publicBase . '/' . $path) : false;
+            if ($full && str_starts_with($full, $publicBase . DIRECTORY_SEPARATOR) && is_file($full)) {
+                @unlink($full);
+            }
+        }
+    } catch (PDOException $e) {
+        // proctor_images table missing — nothing to clean up
+    }
+
+    db()->prepare('DELETE FROM qualifying_attempts WHERE id = ?')->execute([$attemptId]);
 }
 
 // ─── Final Exam helpers ───────────────────────────────────
