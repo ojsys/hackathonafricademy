@@ -698,7 +698,7 @@ require_once __DIR__ . '/../includes/header.php';
                                         <table class="table table-sm" style="font-size:.82rem">
                                             <thead>
                                                 <tr>
-                                                    <th>#</th><th>Date</th><th>Score</th><th>Time</th><th>Result</th><th>Flags</th>
+                                                    <th>#</th><th>Date</th><th>Score</th><th>Time</th><th>Result</th><th>Flags</th><th></th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -729,10 +729,20 @@ require_once __DIR__ . '/../includes/header.php';
                                                         <span class="text-muted">0</span>
                                                         <?php endif; ?>
                                                     </td>
+                                                    <td class="text-end">
+                                                        <form action="/actions/admin/delete_exam_attempt.php" method="POST" class="d-inline"
+                                                              onsubmit="return confirm('Delete this <?= h($c['title']) ?> exam attempt (<?= $ea['score'] ?>%, <?= $ea['passed'] ? 'Passed' : 'Failed' ?>)?\n\nThis permanently removes the attempt and its proctoring flags, and lets the candidate retake the exam. This cannot be undone.');">
+                                                            <?= csrf_field() ?>
+                                                            <input type="hidden" name="attempt_id" value="<?= (int)$ea['id'] ?>">
+                                                            <button type="submit" class="btn btn-sm btn-outline-danger py-0 px-1" title="Delete this attempt so the candidate can retake">
+                                                                <i class="bi bi-trash"></i>
+                                                            </button>
+                                                        </form>
+                                                    </td>
                                                 </tr>
                                                 <?php if ($flagCount > 0): ?>
                                                 <tr class="collapse" id="<?= $collapseId ?>">
-                                                    <td colspan="6" class="bg-light">
+                                                    <td colspan="7" class="bg-light">
                                                         <div class="small fw-600 mb-1"><i class="bi bi-shield-exclamation me-1"></i>Integrity events during this attempt</div>
                                                         <table class="table table-sm mb-0" style="font-size:.78rem">
                                                             <?php foreach ($examEvents as $ev):
