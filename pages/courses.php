@@ -23,8 +23,7 @@ $iconClasses = ['icon-html', 'icon-css', 'icon-js'];
         <?php foreach ($courses as $i => $course):
             $idx = $i % 3;
             $enrolled = is_enrolled($user['id'], $course['id']);
-            $locked   = is_course_locked($user['id'], $course['id']);
-            $p = ($enrolled && !$locked) ? get_course_progress($user['id'], $course['id']) : null;
+            $p = $enrolled ? get_course_progress($user['id'], $course['id']) : null;
             $modules = get_modules_for_course($course['id']);
             $lessonCount = 0;
             foreach ($modules as $m) {
@@ -76,11 +75,7 @@ $iconClasses = ['icon-html', 'icon-css', 'icon-js'];
                     </div>
                 </div>
                 <div class="card-footer bg-transparent px-4 pb-4 pt-0">
-                    <?php if ($locked): ?>
-                    <button class="btn btn-secondary btn-sm w-100" disabled>
-                        <i class="bi bi-lock-fill me-1"></i>Complete previous course first
-                    </button>
-                    <?php elseif ($enrolled): ?>
+                    <?php if ($enrolled): ?>
                     <?php $next = get_next_lesson($user['id'], $course['id']); ?>
                     <?php if ($next): ?>
                     <a href="/pages/lesson.php?id=<?= $next['id'] ?>" class="btn btn-primary btn-sm w-100">

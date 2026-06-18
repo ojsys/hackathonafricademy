@@ -15,7 +15,7 @@
  * Only embed-form URLs (youtube.com/embed/ID) are used, as pages/lesson.php
  * renders video_url inside an <iframe>.
  *
- * Currently wires up: MODULE 1 (4 lessons). Later modules are added in v9+.
+ * Currently wires up: MODULES 1-2 (8 lessons). Later modules are added next.
  */
 
 define('MIGRATION_PASSWORD', 'hackathon2026pyvideos');
@@ -41,6 +41,16 @@ $VIDEOS = [
         => 'https://www.youtube.com/embed/cQT33yu9pY8',   // Programming with Mosh — Python Variables
     'Comments, the REPL workflow, and the Zen of Python'
         => 'https://www.youtube.com/embed/uBHOb55-fBo',   // Indian Pythonista — The Zen of Python, decoded.
+
+    // ── Module 2: Core Syntax & Data Types ──
+    'Numbers: integers, floats, and arithmetic'
+        => 'https://www.youtube.com/embed/khKv-8q7YmY',   // Corey Schafer — Integers and Floats
+    'Strings and f-strings'
+        => 'https://www.youtube.com/embed/k9TUPpGqYTo',   // Corey Schafer — Strings: Working with Textual Data
+    'Booleans, None, and comparison/logical operators'
+        => 'https://www.youtube.com/embed/0MBLkNlffT0',   // ProgrammingKnowledge — Boolean, Comparison & Logical Operators
+    'Type conversion, input() and print()'
+        => 'https://www.youtube.com/embed/8T14Q1LDDwk',   // rory mulcahey — Input & Type Conversion
 ];
 
 echo '<h2>Attaching videos to: ' . htmlspecialchars($COURSE_TITLE) . '</h2>';

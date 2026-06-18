@@ -497,7 +497,7 @@ EOT
     [
       'title' => 'Numbers: integers, floats, and arithmetic',
       'minutes' => 15,
-      'video_url' => '',
+      'video_url' => 'https://www.youtube.com/embed/khKv-8q7YmY',
       'content' => <<<'EOT'
 <h2>Two number types you will use daily</h2>
 <ul>
@@ -591,7 +591,7 @@ EOT
     [
       'title' => 'Strings and f-strings',
       'minutes' => 20,
-      'video_url' => '',
+      'video_url' => 'https://www.youtube.com/embed/k9TUPpGqYTo',
       'content' => <<<'EOT'
 <h2>What is a string?</h2>
 <p>A <strong>string</strong> (<code>str</code>) is text — a sequence of characters. Write one with single or
@@ -701,7 +701,7 @@ EOT
     [
       'title' => 'Booleans, None, and comparison/logical operators',
       'minutes' => 16,
-      'video_url' => '',
+      'video_url' => 'https://www.youtube.com/embed/0MBLkNlffT0',
       'content' => <<<'EOT'
 <h2>Booleans: True and False</h2>
 <p>A <strong>boolean</strong> (<code>bool</code>) has exactly two values: <code>True</code> and
@@ -801,7 +801,7 @@ EOT
     [
       'title' => 'Type conversion, input() and print()',
       'minutes' => 15,
-      'video_url' => '',
+      'video_url' => 'https://www.youtube.com/embed/8T14Q1LDDwk',
       'content' => <<<'EOT'
 <h2>Converting between types</h2>
 <p>Python won't silently mix types, so you convert explicitly with the type's name as a function

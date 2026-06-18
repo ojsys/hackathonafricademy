@@ -290,21 +290,12 @@ function is_eligible(int $userId): bool {
 }
 
 /**
- * Returns true if the course is locked because a prerequisite course
- * (lower order_index) has not yet been completed by this user.
+ * Course-to-course locking is DISABLED: students may attempt every course
+ * independently, in any order. (Within a course, module quizzes still gate the
+ * next module via is_module_accessible().) Kept as a function so all call sites
+ * keep working; to re-enable prerequisite sequencing, restore the body below.
  */
 function is_course_locked(int $userId, int $courseId): bool {
-    $stmt = db()->prepare('SELECT order_index FROM courses WHERE id = ?');
-    $stmt->execute([$courseId]);
-    $course = $stmt->fetch();
-    if (!$course || $course['order_index'] <= 1) return false; // first course never locked
-
-    // Get all courses that come before this one
-    $prev = db()->prepare('SELECT id FROM courses WHERE order_index < ? AND status = "published" ORDER BY order_index');
-    $prev->execute([$course['order_index']]);
-    foreach ($prev->fetchAll() as $p) {
-        if (!is_course_complete($userId, (int)$p['id'])) return true;
-    }
     return false;
 }
 
