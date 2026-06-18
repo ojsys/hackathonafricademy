@@ -161,7 +161,9 @@ require_once __DIR__ . '/../includes/header.php';
             <?php endif; ?>
 
             <!-- Lesson content (rendered HTML from database) -->
-            <div class="lesson-body">
+            <!-- .admin-only blocks inside content (e.g. "paste video via Admin") are hidden from students -->
+            <style>.lesson-body .admin-only{display:none}.lesson-body.show-admin-notes .admin-only{display:inline}</style>
+            <div class="lesson-body <?= is_admin() ? 'show-admin-notes' : '' ?>">
                 <?= $lesson['content'] /* Content is admin-authored HTML; sanitize on input */ ?>
             </div>
 

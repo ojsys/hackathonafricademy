@@ -63,7 +63,7 @@ function vid_box(string $what, string $search): string {
 <div class="alert alert-secondary d-flex align-items-start gap-2 mt-4" style="border-left:4px solid #6c757d">
   <i class="bi bi-youtube text-danger fs-5"></i>
   <div><strong>Watch as a guide:</strong> $what<br>
-  <span class="text-muted small">Suggested search: &ldquo;$search&rdquo; — then paste the YouTube <em>embed</em> URL into this lesson via Admin → Lessons.</span></div>
+  <span class="text-muted small">Suggested search: &ldquo;$search&rdquo;<span class="admin-only"> — then paste the YouTube <em>embed</em> URL into this lesson via Admin &rarr; Lessons.</span></span></div>
 </div>
 HTML;
 }
@@ -82,7 +82,7 @@ $MODULES = [
     [
       'title' => 'What is Python and how does it run?',
       'minutes' => 14,
-      'video_url' => '',
+      'video_url' => 'https://www.youtube.com/embed/BkHdmAhapws',
       'content' => <<<'EOT'
 <h2>What is Python?</h2>
 <p>Python is a <strong>general-purpose programming language</strong>. "General-purpose" means it is
@@ -165,7 +165,7 @@ EOT
     [
       'title' => 'Installing Python and your first program',
       'minutes' => 16,
-      'video_url' => '',
+      'video_url' => 'https://www.youtube.com/embed/D2cwvpJSBX4',
       'content' => <<<'EOT'
 <h2>Goal</h2>
 <p>By the end of this lesson you will have Python installed, confirmed it works from the
@@ -249,7 +249,7 @@ EOT
     [
       'title' => 'Variables, objects, and dynamic typing',
       'minutes' => 18,
-      'video_url' => '',
+      'video_url' => 'https://www.youtube.com/embed/cQT33yu9pY8',
       'content' => <<<'EOT'
 <h2>Variables are names, not boxes</h2>
 <p>A <strong>variable</strong> is a <em>name</em> that refers to a value. You create one with <code>=</code>
@@ -345,7 +345,7 @@ EOT
     [
       'title' => 'Comments, the REPL workflow, and the Zen of Python',
       'minutes' => 12,
-      'video_url' => '',
+      'video_url' => 'https://www.youtube.com/embed/uBHOb55-fBo',
       'content' => <<<'EOT'
 <h2>Comments: notes for humans</h2>
 <p>A <strong>comment</strong> is text Python ignores. It exists to explain code to people (including
