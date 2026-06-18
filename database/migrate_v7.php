@@ -970,7 +970,7 @@ EOT
     [
       'title' => 'Making decisions: if, elif, else',
       'minutes' => 16,
-      'video_url' => '',
+      'video_url' => 'https://www.youtube.com/embed/DZwmZ8Usvnk',
       'content' => <<<'EOT'
 <h2>Programs need to choose</h2>
 <p>So far our code ran top to bottom, every line, every time. Real programs branch:
@@ -1069,7 +1069,7 @@ EOT
     [
       'title' => 'Looping with for and range',
       'minutes' => 18,
-      'video_url' => '',
+      'video_url' => 'https://www.youtube.com/embed/0P_FYKA7sa8',
       'content' => <<<'EOT'
 <h2>Do something for each item</h2>
 <p>A <code>for</code> loop walks through a sequence and runs its body once per item. This is the most
@@ -1175,7 +1175,7 @@ EOT
     [
       'title' => 'while loops, break, continue, and loop-else',
       'minutes' => 16,
-      'video_url' => '',
+      'video_url' => 'https://www.youtube.com/embed/2nAOQGJPefU',
       'content' => <<<'EOT'
 <h2>Looping until a condition changes</h2>
 <p>A <code>for</code> loop is for "each item in a known sequence". A <code>while</code> loop is for
@@ -1334,7 +1334,7 @@ EOT
     [
       'title' => 'Lists: ordered, changeable collections',
       'minutes' => 20,
-      'video_url' => '',
+      'video_url' => 'https://www.youtube.com/embed/W8KRzm-HUcc',
       'content' => <<<'EOT'
 <h2>What is a list?</h2>
 <p>A <strong>list</strong> is an ordered, changeable collection of items. Write one with square
@@ -1433,7 +1433,7 @@ EOT
     [
       'title' => 'Tuples: fixed, immutable records',
       'minutes' => 12,
-      'video_url' => '',
+      'video_url' => 'https://www.youtube.com/embed/LaswEEqcgv0',
       'content' => <<<'EOT'
 <h2>What is a tuple?</h2>
 <p>A <strong>tuple</strong> is like a list but <strong>immutable</strong> — once created, you cannot change
@@ -1504,7 +1504,7 @@ EOT
     [
       'title' => 'Dictionaries: key → value lookup',
       'minutes' => 20,
-      'video_url' => '',
+      'video_url' => 'https://www.youtube.com/embed/daefaLgNkw0',
       'content' => <<<'EOT'
 <h2>What is a dictionary?</h2>
 <p>A <strong>dictionary</strong> (<code>dict</code>) stores <strong>key → value</strong> pairs. Instead of
@@ -1598,7 +1598,7 @@ EOT
     [
       'title' => 'Sets: uniqueness and membership',
       'minutes' => 12,
-      'video_url' => '',
+      'video_url' => 'https://www.youtube.com/embed/sBvaPopWOmQ',
       'content' => <<<'EOT'
 <h2>What is a set?</h2>
 <p>A <strong>set</strong> is an unordered collection of <strong>unique</strong> items. It automatically
@@ -1670,7 +1670,7 @@ EOT
     [
       'title' => 'Comprehensions and choosing the right structure',
       'minutes' => 18,
-      'video_url' => '',
+      'video_url' => 'https://www.youtube.com/embed/3dt4OGnU5sM',
       'content' => <<<'EOT'
 <h2>Comprehensions: build a collection in one line</h2>
 <p>Very often you build a new list by looping and appending. A <strong>list comprehension</strong>
@@ -1841,7 +1841,7 @@ EOT
     [
       'title' => 'Defining and calling functions',
       'minutes' => 16,
-      'video_url' => '',
+      'video_url' => 'https://www.youtube.com/embed/9Os0o3wzS_I',
       'content' => <<<'EOT'
 <h2>Why functions?</h2>
 <p>A <strong>function</strong> is a named, reusable block of code. Instead of repeating the same lines
@@ -1936,7 +1936,7 @@ EOT
     [
       'title' => 'Arguments in depth: defaults, keywords, *args, **kwargs',
       'minutes' => 20,
-      'video_url' => '',
+      'video_url' => 'https://www.youtube.com/embed/Vh__2V2tXUM',
       'content' => <<<'EOT'
 <h2>Positional vs keyword arguments</h2>
 <p>By default, arguments match parameters by <strong>position</strong>. You can also pass them by
@@ -2030,7 +2030,7 @@ EOT
     [
       'title' => 'Scope: where names live',
       'minutes' => 15,
-      'video_url' => '',
+      'video_url' => 'https://www.youtube.com/embed/QVdf0LgmICw',
       'content' => <<<'EOT'
 <h2>Local vs global scope</h2>
 <p><strong>Scope</strong> is the region where a name is visible. A variable created <em>inside</em> a
@@ -2113,7 +2113,7 @@ EOT
     [
       'title' => 'Lambdas, higher-order functions, docstrings & type hints',
       'minutes' => 18,
-      'video_url' => '',
+      'video_url' => 'https://www.youtube.com/embed/YIOYJgLQYiY',
       'content' => <<<'EOT'
 <h2>Functions are values too</h2>
 <p>In Python a function is an <strong>object</strong> you can store in a variable, pass to another
@@ -2297,7 +2297,7 @@ EOT
     [
       'title' => 'Classes and objects: the basics',
       'minutes' => 20,
-      'video_url' => '',
+      'video_url' => 'https://www.youtube.com/embed/ZDa-Z5JzLYM',
       'content' => <<<'EOT'
 <h2>From data + functions to objects</h2>
 <p>So far you've kept data in variables and behaviour in functions, separately. <strong>Object-oriented
@@ -2429,7 +2429,7 @@ EOT
     [
       'title' => 'The four pillars of OOP — overview',
       'minutes' => 12,
-      'video_url' => '',
+      'video_url' => 'https://www.youtube.com/embed/ZVTuWsrjvyU',
       'content' => <<<'EOT'
 <h2>Why principles, not just syntax</h2>
 <p>Knowing <em>how</em> to write a class is the easy part. The hard, valuable part is designing classes
@@ -2495,7 +2495,7 @@ EOT
     [
       'title' => 'Pillar 1 — Encapsulation',
       'minutes' => 20,
-      'video_url' => '',
+      'video_url' => 'https://www.youtube.com/embed/jCzT9XFZ5bw',
       'content' => <<<'EOT'
 <h2>What encapsulation really means</h2>
 <p><strong>Encapsulation</strong> has two parts that go together:</p>
@@ -2620,7 +2620,7 @@ EOT
     [
       'title' => 'Pillar 2 — Abstraction',
       'minutes' => 18,
-      'video_url' => '',
+      'video_url' => 'https://www.youtube.com/embed/0HbgNSoexFw',
       'content' => <<<'EOT'
 <h2>Abstraction: show what, hide how</h2>
 <p><strong>Abstraction</strong> means exposing a simple, essential interface while hiding complex
@@ -2724,7 +2724,7 @@ EOT
     [
       'title' => 'Pillar 3 — Inheritance',
       'minutes' => 22,
-      'video_url' => '',
+      'video_url' => 'https://www.youtube.com/embed/RSl87lqOXDE',
       'content' => <<<'EOT'
 <h2>Reuse by building on existing classes</h2>
 <p><strong>Inheritance</strong> lets a new class (the <strong>child</strong>/subclass) reuse and extend an
@@ -2843,7 +2843,7 @@ EOT
     [
       'title' => 'Pillar 4 — Polymorphism',
       'minutes' => 20,
-      'video_url' => '',
+      'video_url' => 'https://www.youtube.com/embed/P1vH3Pfw6BI',
       'content' => <<<'EOT'
 <h2>One interface, many forms</h2>
 <p><strong>Polymorphism</strong> (Greek for "many shapes") means different object types can be used
@@ -2959,7 +2959,7 @@ EOT
     [
       'title' => 'Dunder methods and dataclasses',
       'minutes' => 18,
-      'video_url' => '',
+      'video_url' => 'https://www.youtube.com/embed/3ohzBxoFHAY',
       'content' => <<<'EOT'
 <h2>Dunder ("magic") methods</h2>
 <p><strong>Dunder methods</strong> (double-underscore, like <code>__init__</code>) let your objects plug
@@ -3156,7 +3156,7 @@ EOT
     [
       'title' => 'What is clean code, and why it matters',
       'minutes' => 14,
-      'video_url' => '',
+      'video_url' => 'https://www.youtube.com/embed/vhdUyGs_f6c',
       'content' => <<<'EOT'
 <h2>Code is read far more than it is written</h2>
 <p>You write a line once; you and your teammates read it dozens of times while fixing and extending
@@ -3239,7 +3239,7 @@ EOT
     [
       'title' => 'SOLID part 1 — SRP & OCP',
       'minutes' => 20,
-      'video_url' => '',
+      'video_url' => 'https://www.youtube.com/embed/pTB30aXS77U',
       'content' => <<<'EOT'
 <h2>What is SOLID?</h2>
 <p><strong>SOLID</strong> is five design principles for classes that make object-oriented code easier to
@@ -3343,7 +3343,7 @@ EOT
     [
       'title' => 'SOLID part 2 — LSP, ISP & DIP',
       'minutes' => 22,
-      'video_url' => '',
+      'video_url' => 'https://www.youtube.com/embed/ZkknJI3QMss',
       'content' => <<<'EOT'
 <h2>L — Liskov Substitution Principle (LSP)</h2>
 <p><em>Subtypes must be substitutable for their base types.</em> Anywhere code expects a parent class,
@@ -3472,7 +3472,7 @@ EOT
     [
       'title' => 'DRY, KISS, YAGNI & composition over inheritance',
       'minutes' => 16,
-      'video_url' => '',
+      'video_url' => 'https://www.youtube.com/embed/TAgQCliUDmg',
       'content' => <<<'EOT'
 <h2>Heuristics that keep code sane</h2>
 <p>Beyond SOLID, a handful of short principles guide everyday decisions. They're memorable on
@@ -3640,7 +3640,7 @@ EOT
     [
       'title' => 'Exceptions and reading tracebacks',
       'minutes' => 14,
-      'video_url' => '',
+      'video_url' => 'https://www.youtube.com/embed/Qmj5UQRkL4s',
       'content' => <<<'EOT'
 <h2>Errors are normal — handle them on purpose</h2>
 <p>When Python hits something it can't do — dividing by zero, converting "abc" to an int, opening a
@@ -3719,7 +3719,7 @@ EOT
     [
       'title' => 'try, except, else, finally',
       'minutes' => 18,
-      'video_url' => '',
+      'video_url' => 'https://www.youtube.com/embed/NIWwJbo-9_8',
       'content' => <<<'EOT'
 <h2>Catching exceptions</h2>
 <p>Wrap risky code in <code>try</code>; handle problems in <code>except</code>:</p>
@@ -3816,7 +3816,7 @@ EOT
     [
       'title' => 'Raising exceptions, custom exceptions & EAFP',
       'minutes' => 16,
-      'video_url' => '',
+      'video_url' => 'https://www.youtube.com/embed/bUJzaWAw8Sk',
       'content' => <<<'EOT'
 <h2>Raising your own exceptions</h2>
 <p>Don't let bad data flow silently through your program. When a function receives something invalid,
@@ -3993,7 +3993,7 @@ EOT
     [
       'title' => 'Reading and writing files with context managers',
       'minutes' => 18,
-      'video_url' => '',
+      'video_url' => 'https://www.youtube.com/embed/Uh2ebFW8OYM',
       'content' => <<<'EOT'
 <h2>Why files?</h2>
 <p>Variables vanish when your program ends. To <strong>persist</strong> data — save notes, logs,
@@ -4096,7 +4096,7 @@ EOT
     [
       'title' => 'Paths the right way with pathlib',
       'minutes' => 14,
-      'video_url' => '',
+      'video_url' => 'https://www.youtube.com/embed/yxa-DJuuTBI',
       'content' => <<<'EOT'
 <h2>Stop building paths with string concatenation</h2>
 <p>Joining paths by hand (<code>folder + "/" + name</code>) breaks across operating systems (Windows
@@ -4183,7 +4183,7 @@ EOT
     [
       'title' => 'Working with JSON and CSV',
       'minutes' => 18,
-      'video_url' => '',
+      'video_url' => 'https://www.youtube.com/embed/9N6a-VLBa2I',
       'content' => <<<'EOT'
 <h2>JSON: structured data as text</h2>
 <p><strong>JSON</strong> (JavaScript Object Notation) is the universal format for structured data — APIs,
@@ -4368,7 +4368,7 @@ EOT
     [
       'title' => 'Modules, imports & the standard library',
       'minutes' => 16,
-      'video_url' => '',
+      'video_url' => 'https://www.youtube.com/embed/CqvZ3vGoGs0',
       'content' => <<<'EOT'
 <h2>Splitting code across files</h2>
 <p>As programs grow you split them into multiple <code>.py</code> files. Each file is a
@@ -4466,7 +4466,7 @@ EOT
     [
       'title' => 'Virtual environments and pip',
       'minutes' => 20,
-      'video_url' => '',
+      'video_url' => 'https://www.youtube.com/embed/Kg1Yvry_Ydk',
       'content' => <<<'EOT'
 <h2>The problem: project dependencies collide</h2>
 <p>Real projects use third-party packages (requests, Django, pandas...). If you install everything
@@ -4570,7 +4570,7 @@ EOT
     [
       'title' => 'Packages and project structure',
       'minutes' => 14,
-      'video_url' => '',
+      'video_url' => 'https://www.youtube.com/embed/niMybnzmzqc',
       'content' => <<<'EOT'
 <h2>From modules to packages</h2>
 <p>A <strong>package</strong> is a folder of modules — a way to group related modules under a namespace.
@@ -4724,7 +4724,7 @@ EOT
     [
       'title' => 'Why test? assert and your first tests',
       'minutes' => 16,
-      'video_url' => '',
+      'video_url' => 'https://www.youtube.com/embed/jjUgWvNxHys',
       'content' => <<<'EOT'
 <h2>Why automated tests?</h2>
 <p>Manually re-checking your program after every change is slow and unreliable. <strong>Automated
@@ -4809,7 +4809,7 @@ EOT
     [
       'title' => 'unittest and pytest',
       'minutes' => 20,
-      'video_url' => '',
+      'video_url' => 'https://www.youtube.com/embed/6tNS--WetLI',
       'content' => <<<'EOT'
 <h2>From asserts to a test framework</h2>
 <p>Bare <code>assert</code> scripts work, but frameworks give you test discovery, clear failure reports,
@@ -4921,7 +4921,7 @@ EOT
     [
       'title' => 'TDD, testable design & debugging',
       'minutes' => 18,
-      'video_url' => '',
+      'video_url' => 'https://www.youtube.com/embed/vBJM5pzBfhY',
       'content' => <<<'EOT'
 <h2>Test-Driven Development (TDD)</h2>
 <p><strong>TDD</strong> flips the usual order: you write the test <em>first</em>, watch it fail, then
@@ -5101,7 +5101,7 @@ EOT
     [
       'title' => 'Project brief, setup & design',
       'minutes' => 18,
-      'video_url' => '',
+      'video_url' => 'https://www.youtube.com/embed/JwwlRkLKj7o',
       'content' => <<<'EOT'
 <h2>What you'll build</h2>
 <p>A command-line <strong>Expense Tracker</strong> — a small but complete app that lets a user add
@@ -5205,7 +5205,7 @@ EOT
     [
       'title' => 'Implementing the core: models, storage, logic',
       'minutes' => 22,
-      'video_url' => '',
+      'video_url' => 'https://www.youtube.com/embed/CvQ7e6yUtnw',
       'content' => <<<'EOT'
 <h2>models.py — the Expense dataclass</h2>
 <p>An expense is a record of values, so a <code>@dataclass</code> is perfect (Module 6). We add helpers
@@ -5342,7 +5342,7 @@ EOT
     [
       'title' => 'The CLI, tests & shipping it',
       'minutes' => 22,
-      'video_url' => '',
+      'video_url' => 'https://www.youtube.com/embed/0twL6MXCLdQ',
       'content' => <<<'EOT'
 <h2>__main__.py — the command-line interface</h2>
 <p>We use the standard library's <code>argparse</code> to parse commands and arguments. Keep the CLI
