@@ -46,7 +46,7 @@ require_once __DIR__ . '/includes/header.php';
                         <span>Students</span>
                     </div>
                     <div class="hero-stat">
-                        <strong>3</strong>
+                        <strong><?= count($courses) ?></strong>
                         <span>Courses</span>
                     </div>
                     <div class="hero-stat">
@@ -86,9 +86,9 @@ require_once __DIR__ . '/includes/header.php';
     <div class="container py-4">
         <div class="text-center mb-5">
             <span class="overline mb-2 d-block">CURRICULUM</span>
-            <h2>Three Courses to Web Mastery</h2>
+            <h2><?= count($courses) ?> Courses to Developer Mastery</h2>
             <p class="text-muted mt-2 mx-auto" style="max-width: 600px;">
-                Progress through our structured curriculum. Each course builds on the last, taking you from complete beginner to job-ready developer.
+                Progress through our structured curriculum, taking you from complete beginner to job-ready developer.
             </p>
         </div>
 
@@ -102,7 +102,7 @@ require_once __DIR__ . '/includes/header.php';
             ?>
             <div class="col-md-4">
                 <div class="card h-100" data-testid="course-card-<?= $course['id'] ?>">
-                    <div class="card-body p-4">
+                    <div class="card-body p-4 d-flex flex-column">
                         <div class="d-flex align-items-start gap-3 mb-3">
                             <div class="course-icon <?= $iconClasses[$idx] ?>">
                                 <i class="bi <?= $icons[$idx] ?>"></i>
@@ -112,17 +112,17 @@ require_once __DIR__ . '/includes/header.php';
                                 <h4 class="mb-0"><?= h($course['title']) ?></h4>
                             </div>
                         </div>
-                        <p class="text-muted mb-4"><?= h($course['description']) ?></p>
-                        
-                        <?php 
+                        <p class="text-muted mb-4" style="display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden;"><?= h($course['description']) ?></p>
+
+                        <?php
                         $modules = get_modules_for_course($course['id']);
                         $lessonCount = 0;
                         foreach ($modules as $m) {
                             $lessonCount += count(get_lessons_for_module($m['id']));
                         }
                         ?>
-                        
-                        <div class="d-flex gap-3 mb-4 small">
+
+                        <div class="d-flex gap-3 mb-4 small mt-auto">
                             <span class="text-muted">
                                 <i class="bi bi-collection me-1"></i> <?= count($modules) ?> Modules
                             </span>
@@ -130,7 +130,7 @@ require_once __DIR__ . '/includes/header.php';
                                 <i class="bi bi-file-text me-1"></i> <?= $lessonCount ?> Lessons
                             </span>
                         </div>
-                        
+
                         <a href="/pages/course.php?id=<?= $course['id'] ?>" class="btn btn-outline-primary w-100">
                             View Course <i class="bi bi-arrow-right ms-1"></i>
                         </a>
