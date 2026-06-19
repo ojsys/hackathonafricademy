@@ -9,7 +9,12 @@ $currentPage = basename($_SERVER['PHP_SELF']);
     <a href="/admin/analytics.php" class="<?= $currentPage === 'analytics.php' ? 'active' : '' ?>" data-testid="sidebar-analytics">
         <i class="bi bi-graph-up"></i> Analytics
     </a>
-    
+
+    <div class="sidebar-section">Learning</div>
+    <a href="/admin/progress.php" class="<?= in_array($currentPage, ['progress.php', 'user_detail.php']) ? 'active' : '' ?>" data-testid="sidebar-progress">
+        <i class="bi bi-mortarboard"></i> Progress Reports
+    </a>
+
     <div class="sidebar-section">Candidates</div>
     <a href="/admin/candidates.php" class="<?= $currentPage === 'candidates.php' ? 'active' : '' ?>" data-testid="sidebar-candidates">
         <i class="bi bi-person-check"></i> Review Candidates

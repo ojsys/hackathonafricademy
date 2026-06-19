@@ -318,6 +318,9 @@ require_once __DIR__ . '/../includes/header.php';
                                         data-bs-target="#detail-<?= $u['id'] ?>">
                                     <i class="bi bi-person-lines-fill"></i>
                                 </button>
+                                <a href="/admin/user_detail.php?id=<?= $u['id'] ?>" class="btn btn-sm btn-outline-success mb-1" title="View learning analytics">
+                                    <i class="bi bi-graph-up"></i>
+                                </a>
                                 <a href="/admin/edit_user.php?id=<?= $u['id'] ?>" class="btn btn-sm btn-outline-primary mb-1" title="Edit user">
                                     <i class="bi bi-pencil"></i>
                                 </a>
