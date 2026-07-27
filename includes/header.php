@@ -77,6 +77,11 @@ $siteName = $siteSettings['site_name'] ?? 'HackathonAfrica LMS';
                         <i class="bi bi-book"></i> Courses
                     </a>
                 </li>
+                <li class="nav-item">
+                    <a class="nav-link <?= strpos($_SERVER['REQUEST_URI'], '/feedback') !== false ? 'active' : '' ?>" href="/pages/feedback.php" data-testid="nav-feedback">
+                        <i class="bi bi-chat-square-text"></i> Feedback
+                    </a>
+                </li>
                 <?php if ($isAdmin): ?>
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle <?= strpos($_SERVER['REQUEST_URI'], '/admin') !== false ? 'active' : '' ?>" href="#" data-bs-toggle="dropdown" data-testid="nav-admin-dropdown">
@@ -86,6 +91,7 @@ $siteName = $siteSettings['site_name'] ?? 'HackathonAfrica LMS';
                         <li><a class="dropdown-item" href="/admin/index.php" data-testid="nav-admin-dashboard"><i class="bi bi-speedometer2 me-2"></i>Dashboard</a></li>
                         <li><a class="dropdown-item" href="/admin/analytics.php" data-testid="nav-admin-analytics"><i class="bi bi-graph-up me-2"></i>Analytics</a></li>
                         <li><a class="dropdown-item" href="/admin/candidates.php" data-testid="nav-admin-candidates"><i class="bi bi-person-check me-2"></i>Candidates</a></li>
+                        <li><a class="dropdown-item" href="/admin/feedback.php" data-testid="nav-admin-feedback"><i class="bi bi-chat-square-text me-2"></i>Participant Feedback</a></li>
                         <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item" href="/admin/courses.php" data-testid="nav-admin-courses"><i class="bi bi-collection me-2"></i>Courses</a></li>
                         <li><a class="dropdown-item" href="/admin/users.php" data-testid="nav-admin-users"><i class="bi bi-people me-2"></i>Users</a></li>

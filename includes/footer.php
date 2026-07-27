@@ -17,6 +17,7 @@
                 <ul class="list-unstyled small">
                     <li class="mb-2"><a href="/pages/courses.php" class="text-muted">All Courses</a></li>
                     <li class="mb-2"><a href="/pages/dashboard.php" class="text-muted">Dashboard</a></li>
+                    <li class="mb-2"><a href="/pages/feedback.php" class="text-muted">Give Feedback</a></li>
                 </ul>
             </div>
             <div class="col-md-2">

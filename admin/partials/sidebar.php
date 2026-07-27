@@ -15,6 +15,10 @@ $currentPage = basename($_SERVER['PHP_SELF']);
         <i class="bi bi-mortarboard"></i> Progress Reports
     </a>
 
+    <a href="/admin/feedback.php" class="<?= $currentPage === 'feedback.php' ? 'active' : '' ?>" data-testid="sidebar-feedback">
+        <i class="bi bi-chat-square-text"></i> Participant Feedback
+    </a>
+
     <div class="sidebar-section">Candidates</div>
     <a href="/admin/candidates.php" class="<?= $currentPage === 'candidates.php' ? 'active' : '' ?>" data-testid="sidebar-candidates">
         <i class="bi bi-person-check"></i> Review Candidates
